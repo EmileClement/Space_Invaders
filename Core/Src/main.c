@@ -1441,9 +1441,11 @@ static void MX_GPIO_Init(void)
 void f_GameMaster(void const * argument)
 {
   /* USER CODE BEGIN 5 */
+  TickType_t xLastWakeTime;
+  const TickType_t xPeriodeTache = 10;
 	/* Infinite loop */
 	for (;;) {
-		osDelay(1);
+		vTaskDelayUntil( &xLastWakeTime, xPeriodeTache );
 	}
   /* USER CODE END 5 */
 }
@@ -1458,10 +1460,12 @@ void f_GameMaster(void const * argument)
 void f_Joueur_1(void const * argument)
 {
   /* USER CODE BEGIN f_Joueur_1 */
+  TickType_t xLastWakeTime;
+  const TickType_t xPeriodeTache = 10;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    vTaskDelayUntil( &xLastWakeTime, xPeriodeTache );
   }
   /* USER CODE END f_Joueur_1 */
 }
@@ -1476,10 +1480,12 @@ void f_Joueur_1(void const * argument)
 void f_block_enemie(void const * argument)
 {
   /* USER CODE BEGIN f_block_enemie */
+  TickType_t xLastWakeTime;
+  const TickType_t xPeriodeTache = 10;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    vTaskDelayUntil( &xLastWakeTime, xPeriodeTache );
   }
   /* USER CODE END f_block_enemie */
 }
@@ -1494,10 +1500,12 @@ void f_block_enemie(void const * argument)
 void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
+  TickType_t xLastWakeTime;
+  const TickType_t xPeriodeTache = 10;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    vTaskDelayUntil( &xLastWakeTime, xPeriodeTache );
   }
   /* USER CODE END f_projectile */
 }
