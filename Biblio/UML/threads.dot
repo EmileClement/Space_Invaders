@@ -1,0 +1,19 @@
+@startuml
+interface "CAN Joystick" as CAN
+
+component t_gm[
+Thread : game_master
+===
+T = 20 ms
+---
+gère l'apparition des porjectiles
+]
+component t_j1[
+Tread : joueur_1
+===
+gère le joystick
+et la position du joueur 1
+]
+
+[t_j1] --> CAN
+@enduml
