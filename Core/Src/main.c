@@ -14,6 +14,9 @@
  * the License. You may obtain a copy of the License at:
  *                             www.st.com/SLA0044
  *
+ *
+ *                             Bonjour ! J'aime beaucoup l'informatique industrielle
+ *
  ******************************************************************************
  */
 /* USER CODE END Header */
