@@ -1,0 +1,66 @@
+@startuml Architecture projet
+interface "CAN Joystick" as CAN
+interface "Ecran" as LCD
+interface "Ethernet" as ether
+interface "Queue\nchoc joueur" as Queue_J
+interface "Queue\nchoc ennemie" as Queue_E
+interface "Queue\nfin du jeu" as Queue_F
+interface "Queue\nnouveau projectile" as Queue_N
+component t_gm[
+Thread : game_master
+===
+T = 20 ms
+---
+gère l'apparition des porjectiles,
+gère les autres Thread,
+fait l'affichage des scores
+]
+component t_j1[
+Tread : joueur_1
+===
+T = 20 ms
+---
+gère le joystick,
+la vie du joueur,
+la position du joueur 1,
+et l'affichage du joueur
+]
+component t_ennemie[
+Tread : Ennemies
+===
+T = 20 ms
+---
+gère les ennemies
+]
+component t_proj[
+Tread : projectile
+===
+T = 20 ms
+---
+gère les projectiles
+gère les colisions
+]
+[t_j1] --> CAN : lit la valeur
+[t_proj] --> Queue_E : touché
+[t_proj] --> Queue_J : touché
+Queue_E --> [t_ennemie]
+Queue_J --> [t_j1]
+[t_j1] --> Queue_F : plus de vie
+[t_ennemie] --> Queue_F : plus d'ennemie
+Queue_F --> [t_gm]
+[t_gm] --> Queue_N : nouveau tire du joueur
+[t_j1] --> Queue_N : nouveau tire des ennemie
+Queue_N --> [t_proj]
+
+[t_j1] --> LCD
+[t_ennemie] --> LCD
+[t_proj] --> LCD
+[t_gm] --> LCD
+
+[t_gm]-->ether
+
+[t_gm]..>[t_j1] : suspend
+[t_gm]..>[t_ennemie] : suspend
+[t_gm]..>[t_proj] : suspend
+
+@enduml
