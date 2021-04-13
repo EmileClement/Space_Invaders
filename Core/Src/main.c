@@ -83,6 +83,11 @@ osThreadId GameMasterHandle;
 osThreadId Joueur_1Handle;
 osThreadId Block_EnemieHandle;
 osThreadId ProjectileHandle;
+osMessageQId Queue_EHandle;
+osMessageQId Queue_FHandle;
+osMessageQId Queue_JHandle;
+osMessageQId Queue_PHandle;
+osMessageQId Queue_NHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -117,10 +122,38 @@ void f_projectile(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+struct Missile
+{
+	uint16_t x;
+	uint16_t y;
+	uint8_t dx;
+	uint8_t dy;
+	uint8_t equipe;
+	char color;
+	uint8_t damage;
+};
+
+struct Joueur
+{
+	uint16_t x;
+	uint16_t y;
+	uint8_t dx;
+	uint8_t dy;
+	uint8_t health;
+	struct Missile missile;
+};
+
+// Définition des paramètres du joueurs
+
+struct Joueur joueur = {10, 10, 1, 1, 3};
+
+
 
 /* USER CODE END 0 */
 
@@ -133,10 +166,11 @@ int main(void)
   /* USER CODE BEGIN 1 */
   char text[50] = {};
   static TS_StateTypeDef TS_State;
-  uint32_t potl, potr, joystick_h, joystick_v;
   ADC_ChannelConfTypeDef sConfig = {0};
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -205,6 +239,27 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* definition and creation of Queue_E */
+  osMessageQDef(Queue_E, 16, uint16_t);
+  Queue_EHandle = osMessageCreate(osMessageQ(Queue_E), NULL);
+
+  /* definition and creation of Queue_F */
+  osMessageQDef(Queue_F, 1, uint8_t);
+  Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
+
+  /* definition and creation of Queue_J */
+  osMessageQDef(Queue_J, 16, uint16_t);
+  Queue_JHandle = osMessageCreate(osMessageQ(Queue_J), NULL);
+
+  /* definition and creation of Queue_P */
+  osMessageQDef(Queue_P, 16, uint16_t);
+  Queue_PHandle = osMessageCreate(osMessageQ(Queue_P), NULL);
+
+  /* definition and creation of Queue_N */
+  osMessageQDef(Queue_N, 16, uint16_t);
+  Queue_NHandle = osMessageCreate(osMessageQ(Queue_N), NULL);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -223,8 +278,8 @@ int main(void)
   Block_EnemieHandle = osThreadCreate(osThread(Block_Enemie), NULL);
 
   /* definition and creation of Projectile */
-  osThreadStaticDef(Projectile, f_projectile, osPriorityNormal, 0, 128, Dynamic, &NULL);
-  ProjectileHandle = osThreadCreate(osThread(Projectile), (void*) sens);
+  osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 128);
+  ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -246,43 +301,29 @@ int main(void)
     sprintf(text, "BP1 : %d", HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
     BSP_LCD_DisplayStringAtLine(5, (uint8_t *)text);
 
-    sConfig.Channel = ADC_CHANNEL_6;
-    HAL_ADC_ConfigChannel(&hadc3, &sConfig);
-    HAL_ADC_Start(&hadc3);
-    while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK)
+
       ;
-    potr = HAL_ADC_GetValue(&hadc3);
 
     sConfig.Channel = ADC_CHANNEL_7;
     HAL_ADC_ConfigChannel(&hadc3, &sConfig);
     HAL_ADC_Start(&hadc3);
-    while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK)
-      ;
-    potl = HAL_ADC_GetValue(&hadc3);
 
+    sConfig.Channel = ADC_CHANNEL_6;
+	HAL_ADC_ConfigChannel(&hadc3, &sConfig);
+	HAL_ADC_Start(&hadc3);
     sConfig.Channel = ADC_CHANNEL_8;
     HAL_ADC_ConfigChannel(&hadc3, &sConfig);
     HAL_ADC_Start(&hadc3);
-    while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK)
-      ;
-    joystick_v = HAL_ADC_GetValue(&hadc3);
 
     HAL_ADC_Start(&hadc1);
-    while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK)
-      ;
-    joystick_h = HAL_ADC_GetValue(&hadc1);
 
-    sprintf(text, "POTL : %4u POTR : %4u joy_v : %4u joy_h : %4u",
-            (uint)potl, (uint)potr, (uint)joystick_v, (uint)joystick_h);
-    BSP_LCD_DisplayStringAtLine(9, (uint8_t *)text);
+
 
     BSP_TS_GetState(&TS_State);
     if (TS_State.touchDetected)
     {
       BSP_LCD_FillCircle(TS_State.touchX[0], TS_State.touchY[0], 4);
     }
-    BSP_LCD_DisplyString(0, "coucou");
-    BSP_LCD_DisplyString(1, "Tu veux voir ma ****");
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1500,9 +1541,12 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 int envoie_score( int score){
+	/*
 socket = udp_new;
-
+*/
+return 0;
 }
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_f_GameMaster */
@@ -1522,6 +1566,12 @@ void f_GameMaster(void const * argument)
   /* Infinite loop */
   for (;;)
   {
+
+
+
+
+
+
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END 5 */
@@ -1539,9 +1589,55 @@ void f_Joueur_1(void const * argument)
   /* USER CODE BEGIN f_Joueur_1 */
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 10;
+  uint16_t Width = 20;
+  uint16_t Height = 20;
+  uint32_t joystick_h, joystick_v;
+  uint8_t stop = 1;
+
+  struct Missile missile;
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+   sConfig.Rank = ADC_REGULAR_RANK_1;
+   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+
+  sConfig.Channel = ADC_CHANNEL_8;
+  HAL_ADC_ConfigChannel(&hadc3, &sConfig);
+  HAL_ADC_Start(&hadc3);
+
+  HAL_ADC_Start(&hadc1);
+
+
   /* Infinite loop */
   for (;;)
   {
+
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
+
+	// BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
+	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
+	joystick_v = HAL_ADC_GetValue(&hadc3);
+	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
+	joystick_h = HAL_ADC_GetValue(&hadc1);
+
+	if ((joueur.y < 27424- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
+	if ((joueur.y > Width + joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
+
+	if ((joueur.x > Height + joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
+	if ((joueur.x < 480-Height - joueur.dx)&&(joystick_v > 2100)) joueur.x -= joueur.dx;
+
+
+	BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
+
+	if (xQueueReceive(Queue_JHandle, &missile, 0) == pdPASS)
+		joueur.health = joueur.health - missile.damage;
+	// On envoie 1 si le joueur est mort et on envoie 0 si les enemis sont tous morts
+		if (joueur.health == 0)xQueueSend(Queue_FHandle,&stop,0);
+
+	// TODO La condition sur une entrée analogique pour envoyer un missile
+	struct Missile missile = {joueur.x, joueur.y,joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
+	xQueueSend(Queue_NHandle,&missile,0);
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_Joueur_1 */
@@ -1580,6 +1676,8 @@ void f_projectile(void const * argument)
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 10;
   /* Infinite loop */
+  struct Missile liste_missile[50];
+
   for (;;)
   {
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
