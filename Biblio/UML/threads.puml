@@ -2,10 +2,10 @@
 interface "CAN Joystick" as CAN
 interface "Ecran" as LCD
 interface "Ethernet" as ether
-interface "Queue\nchoc joueur" as Queue_J
-interface "Queue\nchoc ennemie" as Queue_E
-interface "Queue\nfin du jeu" as Queue_F
-interface "Queue\nnouveau projectile" as Queue_N
+interface "Queue\nQueue_J\nchoc joueur" as Queue_J
+interface "Queue\nQueue_E\nchoc ennemie" as Queue_E
+interface "Queue\nQueue_F\nfin du jeu" as Queue_F
+interface "Queue\nQueue_N\nnouveau projectile" as Queue_N
 component t_gm[
 Thread : game_master
 ===
