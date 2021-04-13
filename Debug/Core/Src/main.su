@@ -25,6 +25,6 @@ main.c:1543:5:envoie_score	16	static
 main.c:1559:6:f_GameMaster	24	static
 main.c:1587:6:f_Joueur_1	80	static
 main.c:1653:6:f_block_enemie	24	static
-main.c:1673:6:f_projectile	528	static
-main.c:1696:6:HAL_TIM_PeriodElapsedCallback	16	static
-main.c:1713:6:Error_Handler	4	static,ignoring_inline_asm
+main.c:1673:6:f_projectile	544	static
+main.c:1712:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:1729:6:Error_Handler	4	static,ignoring_inline_asm

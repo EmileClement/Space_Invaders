@@ -1677,9 +1677,25 @@ void f_projectile(void const * argument)
   const TickType_t xPeriodeTache = 10;
   /* Infinite loop */
   struct Missile liste_missile[50];
+  struct Missile missile;
+  uint8_t indice = 0;
 
   for (;;)
   {
+	  xQueueReceive(Queue_NHandle, &missile, 0);
+	  liste_missile[indice++] = missile;
+	  for (int i=0;i<= indice;i++)
+	  {
+		  liste_missile[i].x = liste_missile[i].dx + liste_missile[i].x;
+		  liste_missile[i].y = liste_missile[i].dy + liste_missile[i].y;
+		  if ((liste_missile[i].x == joueur.x)&&(liste_missile[i].y == joueur.y))
+		  {
+			  xQueueSend(Queue_JHandle, &liste_missile+indice,0);
+			  // TODO Une petite animation d'explosion ?
+		  }
+	  }
+
+
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_projectile */
