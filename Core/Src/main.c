@@ -122,7 +122,6 @@ void f_projectile(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -135,8 +134,9 @@ struct Missile
 	uint8_t dx;
 	uint8_t dy;
 	uint8_t equipe;
-	char color;
+	uint32_t color;
 	uint8_t damage;
+	uint8_t valide;
 };
 
 struct Joueur
@@ -152,6 +152,8 @@ struct Joueur
 // Définition des paramètres du joueurs
 
 struct Joueur joueur = {10, 10, 1, 1, 3};
+
+uint32_t LCD_COLOR_BACKGROUND = LCD_COLOR_BLACK;
 
 
 
@@ -169,6 +171,7 @@ int main(void)
   ADC_ChannelConfTypeDef sConfig = {0};
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+
 
 
   /* USER CODE END 1 */
@@ -218,10 +221,10 @@ int main(void)
                            LCD_FB_START_ADDRESS + BSP_LCD_GetXSize() * BSP_LCD_GetYSize() * 4);
   BSP_LCD_DisplayOn();
   BSP_LCD_SelectLayer(1);
-  BSP_LCD_Clear(LCD_COLOR_LIGHTGREEN);
+  BSP_LCD_Clear(LCD_COLOR_BLACK);
   BSP_LCD_SetFont(&Font12);
   BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
-  BSP_LCD_SetBackColor(LCD_COLOR_LIGHTGREEN);
+  BSP_LCD_SetBackColor(LCD_COLOR_BLACK);
 
   BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
 
@@ -1606,28 +1609,33 @@ void f_Joueur_1(void const * argument)
 
   HAL_ADC_Start(&hadc1);
 
+  // Paramètre de l'écran pour la reprouductibilité
+
+  	uint32_t LCD_HEIGHT = BSP_LCD_GetXSize();
+  	uint32_t LCD_WIDTH = BSP_LCD_GetYSize();
 
   /* Infinite loop */
   for (;;)
   {
 
-	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+
+	BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
 	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
 
-	// BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
-	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
-	joystick_v = HAL_ADC_GetValue(&hadc3);
-	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
-	joystick_h = HAL_ADC_GetValue(&hadc1);
+	//BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
+//	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
+//	joystick_v = HAL_ADC_GetValue(&hadc3);
+//	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
+//	joystick_h = HAL_ADC_GetValue(&hadc1);
 
-	if ((joueur.y < 27424- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
+	if ((joueur.y < LCD_HEIGHT- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
 	if ((joueur.y > Width + joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
 
-	if ((joueur.x > Height + joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
+	if ((joueur.x > LCD_WIDTH + joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
 	if ((joueur.x < 480-Height - joueur.dx)&&(joystick_v > 2100)) joueur.x -= joueur.dx;
 
 
-	BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+	BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
 	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
 
 	if (xQueueReceive(Queue_JHandle, &missile, 0) == pdPASS)
@@ -1636,8 +1644,8 @@ void f_Joueur_1(void const * argument)
 		if (joueur.health == 0)xQueueSend(Queue_FHandle,&stop,0);
 
 	// TODO La condition sur une entrée analogique pour envoyer un missile
-	struct Missile missile = {joueur.x, joueur.y,joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
-	xQueueSend(Queue_NHandle,&missile,0);
+//	struct Missile missile = {joueur.x, joueur.y,joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
+//	xQueueSend(Queue_NHandle,&missile,0);
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_Joueur_1 */
@@ -1674,29 +1682,75 @@ void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
-  const TickType_t xPeriodeTache = 10;
+  const TickType_t xPeriodeTache = 5000;
   /* Infinite loop */
-  struct Missile liste_missile[50];
-  struct Missile missile;
-  uint8_t indice = 0;
+  struct Missile liste_missile[20];
+  struct Missile missile = {70, 70, 0, 1, 0, LCD_COLOR_WHITE,  1,1};
+  uint8_t indice = 1;
+  liste_missile[0] = missile;
+
+  // Paramètre de l'écran pour la reprouductibilité
+
+  	uint32_t LCD_HEIGHT = 200; //BSP_LCD_GetXSize();
+  	uint32_t LCD_WIDTH = 200; //BSP_LCD_GetYSize();
 
   for (;;)
   {
-	  xQueueReceive(Queue_NHandle, &missile, 0);
-	  liste_missile[indice++] = missile;
-	  for (int i=0;i<= indice;i++)
+	  //xQueueReceive(Queue_NHandle, &missile, 0);
+	  //liste_missile[indice++] = missile;
+
+	  for (int i=0;i< indice;i++)
 	  {
-		  liste_missile[i].x = liste_missile[i].dx + liste_missile[i].x;
-		  liste_missile[i].y = liste_missile[i].dy + liste_missile[i].y;
-		  if ((liste_missile[i].x == joueur.x)&&(liste_missile[i].y == joueur.y))
+
+		  // Si le missile n'est pas sur un bord
+		  if (liste_missile[i].valide == 1)
 		  {
-			  xQueueSend(Queue_JHandle, &liste_missile+indice,0);
-			  // TODO Une petite animation d'explosion ?
+			  // Si le missile appartient au joueur :
+			  if (liste_missile[i].equipe == 0)
+			  {
+
+				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
+					{
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+					  liste_missile[i].x = liste_missile[i].x - liste_missile[i].dx ;
+					  liste_missile[i].y = liste_missile[i].y - liste_missile[i].dy;
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
+					}
+				  //TODO test sur tous les ennemis
+				  else
+				  {
+					  liste_missile[i].valide = 0;
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+				  }
+			  }
+			  // Si le missile appartient aux ennemis
+			  else if (liste_missile[i].equipe == 1)
+			  {
+				  if ((liste_missile[i].x == joueur.x)&&(liste_missile[i].y == joueur.y))
+				  {
+					  xQueueSend(Queue_JHandle, &liste_missile+indice,0);
+					  liste_missile[i].valide = 0;
+					  // TODO Une petite animation d'explosion ?
+				  }
+				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
+				  {
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
+					  liste_missile[i].y = liste_missile[i].y + liste_missile[i].dy;
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
+				  }
+				  else
+				  {
+					  liste_missile[i].valide = 0;
+					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+				  }
+			  }
+
 		  }
 	  }
+	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
 
 
-    vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_projectile */
 }
