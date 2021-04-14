@@ -1622,11 +1622,11 @@ void f_Joueur_1(void const * argument)
 	BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
 	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
 
-	//BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
-//	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
-//	joystick_v = HAL_ADC_GetValue(&hadc3);
-//	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
-//	joystick_h = HAL_ADC_GetValue(&hadc1);
+	BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
+	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
+	joystick_v = HAL_ADC_GetValue(&hadc3);
+	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
+	joystick_h = HAL_ADC_GetValue(&hadc1);
 
 	if ((joueur.y < LCD_HEIGHT- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
 	if ((joueur.y > Width + joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
@@ -1685,14 +1685,14 @@ void f_projectile(void const * argument)
   const TickType_t xPeriodeTache = 5000;
   /* Infinite loop */
   struct Missile liste_missile[20];
-  struct Missile missile = {70, 70, 0, 1, 0, LCD_COLOR_WHITE,  1,1};
+  struct Missile missile = {70, 70, 1, 0, 0, LCD_COLOR_WHITE,  1,1};
   uint8_t indice = 1;
   liste_missile[0] = missile;
 
   // Paramètre de l'écran pour la reprouductibilité
 
-  	uint32_t LCD_HEIGHT = 200; //BSP_LCD_GetXSize();
-  	uint32_t LCD_WIDTH = 200; //BSP_LCD_GetYSize();
+  	uint32_t LCD_HEIGHT = BSP_LCD_GetXSize();
+  	uint32_t LCD_WIDTH = BSP_LCD_GetYSize();
 
   for (;;)
   {
@@ -1712,8 +1712,8 @@ void f_projectile(void const * argument)
 				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
 					{
 					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
-					  liste_missile[i].x = liste_missile[i].x - liste_missile[i].dx ;
-					  liste_missile[i].y = liste_missile[i].y - liste_missile[i].dy;
+					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
+					  liste_missile[i].y = liste_missile[i].y + liste_missile[i].dy;
 					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
 					}
 				  //TODO test sur tous les ennemis
