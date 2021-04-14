@@ -141,13 +141,26 @@ struct Missile
 
 struct Joueur
 {
-	uint16_t x;
-	uint16_t y;
+	// uint32_t et pas 16 car fonction d'affichage bitmap (j'en sais pas plus)
+	uint32_t x;
+	uint32_t y;
 	uint8_t dx;
 	uint8_t dy;
 	uint8_t health;
 	struct Missile missile;
 };
+
+struct Monster
+{
+	uint32_t x;
+	uint32_t y;
+	uint8_t pbmp;
+	struct Missile missile;
+	uint8_t type;
+	uint8_t health;
+
+};
+
 
 // Définition des paramètres du joueurs
 
@@ -155,6 +168,12 @@ struct Joueur joueur = {10, 10, 1, 1, 3};
 
 uint32_t LCD_COLOR_BACKGROUND = LCD_COLOR_BLACK;
 
+// Number of waves of enemies before the game is won.
+
+uint8_t waves_left = 10;
+
+// La limite au dela de laquelle les ennemis ne peuvent pas être (utilisé pour
+uint32_t Limit_ennemis_x = 50;
 
 
 /* USER CODE END 0 */
@@ -1566,11 +1585,30 @@ void f_GameMaster(void const * argument)
   /* USER CODE BEGIN 5 */
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 10;
+  // Si la variable end est à 1, le jeu s'arrete.
+  uint8_t end = 0;
+
   /* Infinite loop */
   for (;;)
   {
+	  xQueueReceive(Queue_FHandle, &end, 0);
+	  if (end == 1){
+		  vTaskDelete(Block_EnemieHandle);
+		  vTaskDelete(ProjectileHandle);
+		  vTaskDelete(Joueur_1Handle);
 
+		  //TODO L'affichage de l'écran de fin et des scores
+	  }
 
+	  if (end == 0){
+		  if (waves_left == 0){
+			  vTaskDelete(Block_EnemieHandle);
+			  vTaskDelete(ProjectileHandle);
+			  vTaskDelete(Joueur_1Handle);
+
+			  //TODO L'affichage de l'écran de fin et des scores
+		  }
+	  }
 
 
 
@@ -1622,7 +1660,7 @@ void f_Joueur_1(void const * argument)
 	BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
 	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
 
-	BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
+	// BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
 	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
 	joystick_v = HAL_ADC_GetValue(&hadc3);
 	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
@@ -1663,9 +1701,42 @@ void f_block_enemie(void const * argument)
   /* USER CODE BEGIN f_block_enemie */
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 10;
+  uint8_t number_monsters = 30;
+  struct Monster list_monsters[30];
+  uint8_t end = 0;
+  uint8_t deplacement = 1;
+  struct Missile missile;
   /* Infinite loop */
   for (;;)
   {
+	  xQueueReceive(Queue_EHandle, &missile, 0);
+	  if (number_monsters == 0){
+		  xQueueSend(Queue_FHandle, &end, 0);
+	  }
+
+	  for (int i=0;i< number_monsters;i++){
+		  if (list_monsters[i].health > 0 ){
+			  if ((missile.x == list_monsters[i].x)&&(missile.y == list_monsters[i].y))
+			  {
+				  list_monsters[i].health = list_monsters[i].health -1;
+				  // Est ce que cette ligne va marcher sachant que je transmets l'adresse dans la queue ?
+				  missile.valide = 0;
+				  if (list_monsters[i].health == 0){
+					  //TODO explosion du plaisir ?
+					  number_monsters = number_monsters -1;
+				  }
+			  }
+
+			  BSP_LCD_DrawBitmap(list_monsters[i].x, list_monsters[i].y, &list_monsters[i].pbmp);
+			  // On alterne le deplacement des méchants comme dans le vrai jeux
+			  //TODO est ce que ca va posé un décalage entre l'affichage et la hitboxe ?
+			  list_monsters[i].x = list_monsters[i].x + deplacement*2;
+		  }
+	  }
+	  deplacement = -1;
+
+
+
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_block_enemie */
@@ -1708,6 +1779,11 @@ void f_projectile(void const * argument)
 			  // Si le missile appartient au joueur :
 			  if (liste_missile[i].equipe == 0)
 			  {
+				  if (liste_missile[i].x >= Limit_ennemis_x)
+				  {
+					  xQueueSend(Queue_EHandle, &liste_missile+indice,0);
+					  // TODO Une petite animation d'explosion ?
+				  }
 
 				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
 					{
