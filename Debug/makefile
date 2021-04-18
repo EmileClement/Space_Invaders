@@ -8,10 +8,20 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include Middlewares/Third_Party/LwIP/system/OS/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/netif/ppp/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/netif/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/core/ipv6/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/core/ipv4/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/core/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/apps/mqtt/subdir.mk
+-include Middlewares/Third_Party/LwIP/src/api/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk
+-include LWIP/Target/subdir.mk
+-include LWIP/App/subdir.mk
 -include Drivers/STM32F7xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
@@ -32,34 +42,34 @@ endif
 
 -include ../makefile.defs
 
-BUILD_ARTIFACT_NAME := prog_demo_2021
+BUILD_ARTIFACT_NAME := Space_Invaders
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX := 
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME).$(BUILD_ARTIFACT_EXTENSION)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-prog_demo_2021.elf \
+Space_Invaders.elf \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-prog_demo_2021.list \
+Space_Invaders.list \
 
 OBJCOPY_BIN += \
-prog_demo_2021.bin \
+Space_Invaders.bin \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: prog_demo_2021.elf secondary-outputs
+main-build: Space_Invaders.elf secondary-outputs
 
 # Tool invocations
-prog_demo_2021.elf: $(OBJS) $(USER_OBJS) /home/ajuton/Documents/STM32CubeIDE/workspace_1.5.1/test_/STM32F746NGHX_FLASH.ld
-	arm-none-eabi-gcc -o "prog_demo_2021.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"/home/ajuton/Documents/STM32CubeIDE/workspace_1.5.1/test_/STM32F746NGHX_FLASH.ld" --specs=nosys.specs -Wl,-Map="prog_demo_2021.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Space_Invaders.elf: $(OBJS) $(USER_OBJS) C:\Users\thoma\Desktop\Scolaire\info_indus_s2\Projet\Space_Invaders\STM32F746NGHX_FLASH.ld
+	arm-none-eabi-gcc -o "Space_Invaders.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\thoma\Desktop\Scolaire\info_indus_s2\Projet\Space_Invaders\STM32F746NGHX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Space_Invaders.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -68,13 +78,13 @@ default.size.stdout: $(EXECUTABLES)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-prog_demo_2021.list: $(EXECUTABLES)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "prog_demo_2021.list"
+Space_Invaders.list: $(EXECUTABLES)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "Space_Invaders.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-prog_demo_2021.bin: $(EXECUTABLES)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "prog_demo_2021.bin"
+Space_Invaders.bin: $(EXECUTABLES)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "Space_Invaders.bin"
 	@echo 'Finished building: $@'
 	@echo ' '
 
