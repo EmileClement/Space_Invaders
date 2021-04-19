@@ -108,13 +108,13 @@ static void MX_TIM5_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART6_UART_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_DAC_Init(void);
 static void MX_UART7_Init(void);
 static void MX_FMC_Init(void);
 static void MX_DMA2D_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RNG_Init(void);
+static void MX_ADC1_Init(void);
 void f_GameMaster(void const * argument);
 void f_Joueur_1(void const * argument);
 void f_block_enemie(void const * argument);
@@ -226,13 +226,13 @@ int main(void)
   MX_TIM8_Init();
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
-  MX_ADC1_Init();
   MX_DAC_Init();
   MX_UART7_Init();
   MX_FMC_Init();
   MX_DMA2D_Init();
   MX_CRC_Init();
   MX_RNG_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   BSP_LCD_Init();
   BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
@@ -515,7 +515,7 @@ static void MX_ADC3_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_6;
+  sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
@@ -1637,14 +1637,20 @@ void f_Joueur_1(void const * argument)
 
   struct Missile missile;
 
-  ADC_ChannelConfTypeDef sConfig = {0};
-   sConfig.Rank = ADC_REGULAR_RANK_1;
-   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  ADC_ChannelConfTypeDef sConfig3 = {0};
+  sConfig3.Rank = ADC_REGULAR_RANK_1;
+  sConfig3.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig3.Channel = ADC_CHANNEL_8;
 
-  sConfig.Channel = ADC_CHANNEL_8;
-  HAL_ADC_ConfigChannel(&hadc3, &sConfig);
+  HAL_ADC_ConfigChannel(&hadc3, &sConfig3);
   HAL_ADC_Start(&hadc3);
 
+  ADC_ChannelConfTypeDef sConfig1 = {0};
+  sConfig1.Rank = ADC_REGULAR_RANK_1;
+  sConfig1.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig1.Channel = ADC_CHANNEL_0;
+
+  HAL_ADC_ConfigChannel(&hadc1, &sConfig1);
   HAL_ADC_Start(&hadc1);
 
   // Paramètre de l'écran pour la reprouductibilité
@@ -1661,16 +1667,21 @@ void f_Joueur_1(void const * argument)
 	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
 
 	// BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
+	HAL_ADC_ConfigChannel(&hadc3, &sConfig3);
+	HAL_ADC_Start(&hadc3);
 	while (HAL_ADC_PollForConversion(&hadc3, 100) != HAL_OK);
-	joystick_v = HAL_ADC_GetValue(&hadc3);
+	joystick_h = HAL_ADC_GetValue(&hadc3);
+
+	HAL_ADC_ConfigChannel(&hadc1, &sConfig1);
+	HAL_ADC_Start(&hadc1);
 	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
-	joystick_h = HAL_ADC_GetValue(&hadc1);
+	joystick_v = HAL_ADC_GetValue(&hadc1);
 
-	if ((joueur.y < LCD_HEIGHT- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
-	if ((joueur.y > Width + joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
+	if ((joueur.y < LCD_WIDTH- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
+	if ((joueur.y > joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
 
-	if ((joueur.x > LCD_WIDTH + joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
-	if ((joueur.x < 480-Height - joueur.dx)&&(joystick_v > 2100)) joueur.x -= joueur.dx;
+	if ((joueur.x < LCD_HEIGHT - Height - joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
+	if ((joueur.x >  joueur.dx)&&(joystick_v > 2100)) joueur.x -= joueur.dx;
 
 
 	BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
