@@ -76,7 +76,6 @@ osThreadId Joueur_1Handle;
 osThreadId Block_EnemieHandle;
 osThreadId ProjectileHandle;
 osThreadId IRQ_BPHandle;
-osThreadId tir_joueurHandle;
 osMessageQId Queue_JHandle;
 osMessageQId Queue_NHandle;
 osMessageQId Queue_FHandle;
@@ -107,7 +106,6 @@ void f_Joueur_1(void const * argument);
 void f_block_enemie(void const * argument);
 void f_projectile(void const * argument);
 void f_IRQ_BP(void const * argument);
-void f_tir_joueur(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -116,11 +114,6 @@ void f_tir_joueur(void const * argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-
-/* The semaphore used to synchronise the button push task with the interrupt. */
-static xSemaphoreHandle xButtonSemaphore;
-
-#define butDEBOUNCE_DELAY	2000
 
 
 struct Missile
@@ -292,12 +285,8 @@ int main(void)
   ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
 
   /* definition and creation of IRQ_BP */
-  osThreadDef(IRQ_BP, f_IRQ_BP, osPriorityHigh, 0, 128);
+  osThreadDef(IRQ_BP, f_IRQ_BP, osPriorityAboveNormal, 0, 128);
   IRQ_BPHandle = osThreadCreate(osThread(IRQ_BP), NULL);
-
-  /* definition and creation of tir_joueur */
-  osThreadDef(tir_joueur, f_tir_joueur, osPriorityNormal, 0, 128);
-  tir_joueurHandle = osThreadCreate(osThread(tir_joueur), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1456,7 +1445,7 @@ void f_block_enemie(void const * argument)
   struct Monster list_monsters[30];
   uint8_t end = 0;
   uint8_t deplacement = 1;
-  struct Missile missile;
+  struct Missile missile = {0,0,0,0,0,0,0,0};
   /* Infinite loop */
   for (;;)
   {
@@ -1507,9 +1496,8 @@ void f_projectile(void const * argument)
   const TickType_t xPeriodeTache = 5000;
   /* Infinite loop */
   struct Missile liste_missile[20];
-  struct Missile missile = {70, 70, 1, 0, 0, LCD_COLOR_WHITE,  1,1};
-  uint8_t indice = 1;
-  liste_missile[0] = missile;
+  struct Missile missile;
+  uint8_t indice = 0;
 
   // Paramètre de l'écran pour la reprouductibilité
 
@@ -1518,8 +1506,11 @@ void f_projectile(void const * argument)
 
   for (;;)
   {
-	  //xQueueReceive(Queue_NHandle, &missile, 0);
-	  //liste_missile[indice++] = missile;
+
+	  xQueueReceive(Queue_NHandle, &missile, 0);
+	  if (missile.valide == 1){
+		  liste_missile[indice++] = missile;
+	  }
 
 	  for (int i=0;i< indice;i++)
 	  {
@@ -1575,6 +1566,7 @@ void f_projectile(void const * argument)
 
 		  }
 	  }
+
 	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
 
   }
@@ -1591,62 +1583,26 @@ void f_projectile(void const * argument)
 void f_IRQ_BP(void const * argument)
 {
   /* USER CODE BEGIN f_IRQ_BP */
-	// Jsp pk long mais ca ne renvoie pas d'erreur. C'était initialement short sur google
-	long sHigherPriorityTaskWoken = pdFALSE;
+  TickType_t xLastWakeTime;
+  // Faudrait convertir en ms mais jsp comment
+  const TickType_t xPeriodeTache = 10;
 
-	/* 'Give' the semaphore to unblock the button task. */
-
-	xSemaphoreGiveFromISR( xButtonSemaphore, &sHigherPriorityTaskWoken );
-
-	/* If giving the semaphore unblocked a task, and the unblocked task has a
-		priority that is higher than the currently running task, then
-		sHigherPriorityTaskWoken will have been set to pdTRUE.  Passing a pdTRUE
-		value to portYIELD_FROM_ISR() will cause this interrupt to return directly
-		to the higher priority unblocked task. */
-		portYIELD_FROM_ISR( sHigherPriorityTaskWoken );
-
-
-  /* USER CODE END f_IRQ_BP */
-}
-
-/* USER CODE BEGIN Header_f_tir_joueur */
-/**
-* @brief Function implementing the tir_joueur thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_f_tir_joueur */
-void f_tir_joueur(void const * argument)
-{
-  /* USER CODE BEGIN f_tir_joueur */
-	/* Ensure the semaphore is created before it gets used. */
-	vSemaphoreCreateBinary( xButtonSemaphore );
   /* Infinite loop */
   for(;;)
   {
-
-	  /* Block on the semaphore to wait for an interrupt event.  The semaphore
-		is 'given' from f_IRQ_BP() below.  Using portMAX_DELAY as the
-		block time will cause the task to block indefinitely provided
-		INCLUDE_vTaskSuspend is set to 1 in FreeRTOSConfig.h. */
-		xSemaphoreTake( xButtonSemaphore, portMAX_DELAY );
-
-		/* The button must have been pushed for this line to be executed.
-		Simply toggle the LED. */
-		HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,!LED);
-
-		/* Wait a short time then clear any pending button pushes as a crude
-		method of debouncing the switch.  xSemaphoreTake() uses a block time of
-		zero this time so it returns immediately rather than waiting for the
-		interrupt to occur. */
-
-		BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
-		BSP_LCD_FillRect(50, 50, 40, 40);
-
-		vTaskDelay( butDEBOUNCE_DELAY );
-		xSemaphoreTake( xButtonSemaphore, 0 );
+	  if (HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin)==0){
+		  struct Missile missile = {joueur.x, joueur.y, 1, 0, 1, LCD_COLOR_LIGHTBLUE, 2, 1};
+		  HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,1);
+		  xQueueSend(Queue_NHandle, &missile,0);
+	  }
+	  if(HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin) ==0){
+		  struct Missile missile = {joueur.x, joueur.y, 0, 1, 1, LCD_COLOR_YELLOW , 2, 1};
+		  HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,1);
+		  xQueueSend(Queue_NHandle, &missile,0);
+	  }
+	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
-  /* USER CODE END f_tir_joueur */
+  /* USER CODE END f_IRQ_BP */
 }
 
  /**
