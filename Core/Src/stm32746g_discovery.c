@@ -397,35 +397,8 @@ uint32_t BSP_PB_GetState(Button_TypeDef Button)
   *                configuration information for the specified USART peripheral.
   * @retval None
   */
-void BSP_COM_Init(COM_TypeDef COM, UART_HandleTypeDef *huart)
-{
-  GPIO_InitTypeDef gpio_init_structure;
 
-  /* Enable GPIO clock */
-  DISCOVERY_COMx_TX_GPIO_CLK_ENABLE(COM);
-  DISCOVERY_COMx_RX_GPIO_CLK_ENABLE(COM);
 
-  /* Enable USART clock */
-  DISCOVERY_COMx_CLK_ENABLE(COM);
-
-  /* Configure USART Tx as alternate function */
-  gpio_init_structure.Pin = COM_TX_PIN[COM];
-  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
-  gpio_init_structure.Speed = GPIO_SPEED_FAST;
-  gpio_init_structure.Pull = GPIO_PULLUP;
-  gpio_init_structure.Alternate = COM_TX_AF[COM];
-  HAL_GPIO_Init(COM_TX_PORT[COM], &gpio_init_structure);
-
-  /* Configure USART Rx as alternate function */
-  gpio_init_structure.Pin = COM_RX_PIN[COM];
-  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = COM_RX_AF[COM];
-  HAL_GPIO_Init(COM_RX_PORT[COM], &gpio_init_structure);
-
-  /* USART configuration */
-  huart->Instance = COM_USART[COM];
-  HAL_UART_Init(huart);
-}
 
 /**
   * @brief  DeInit COM port.
@@ -437,21 +410,7 @@ void BSP_COM_Init(COM_TypeDef COM, UART_HandleTypeDef *huart)
   *                configuration information for the specified USART peripheral.
   * @retval None
   */
-void BSP_COM_DeInit(COM_TypeDef COM, UART_HandleTypeDef *huart)
-{
-  /* USART configuration */
-  huart->Instance = COM_USART[COM];
-  HAL_UART_DeInit(huart);
 
-  /* Enable USART clock */
-  DISCOVERY_COMx_CLK_DISABLE(COM);
-
-  /* DeInit GPIO pins can be done in the application 
-     (by surcharging this __weak function) */
-
-  /* GPIO pins clock, DMA clock can be shut down in the application 
-     by surcharging this __weak function */
-}
 
 /*******************************************************************************
                             BUS OPERATIONS

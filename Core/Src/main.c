@@ -30,6 +30,7 @@
 #include "stm32746g_discovery_lcd.h"
 #include "stm32746g_discovery_ts.h"
 #include "stdio.h"
+#include "semphr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,11 +75,12 @@ osThreadId GameMasterHandle;
 osThreadId Joueur_1Handle;
 osThreadId Block_EnemieHandle;
 osThreadId ProjectileHandle;
-osMessageQId Queue_EHandle;
-osMessageQId Queue_FHandle;
+osThreadId IRQ_BPHandle;
+osThreadId tir_joueurHandle;
 osMessageQId Queue_JHandle;
-osMessageQId Queue_PHandle;
 osMessageQId Queue_NHandle;
+osMessageQId Queue_FHandle;
+osMessageQId Queue_EHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -94,18 +96,18 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM8_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART6_UART_Init(void);
+static void MX_ADC1_Init(void);
 static void MX_DAC_Init(void);
 static void MX_FMC_Init(void);
 static void MX_DMA2D_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RNG_Init(void);
-static void MX_ADC1_Init(void);
 void f_GameMaster(void const * argument);
 void f_Joueur_1(void const * argument);
 void f_block_enemie(void const * argument);
 void f_projectile(void const * argument);
+void f_IRQ_BP(void const * argument);
+void f_tir_joueur(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -113,6 +115,13 @@ void f_projectile(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+/* The semaphore used to synchronise the button push task with the interrupt. */
+static xSemaphoreHandle xButtonSemaphore;
+
+#define butDEBOUNCE_DELAY	2000
+
 
 struct Missile
 {
@@ -152,6 +161,8 @@ struct Monster
 // Définition des paramètres du joueurs
 
 struct Joueur joueur = {10, 10, 1, 1, 3};
+
+uint8_t LED = 1;
 
 uint32_t LCD_COLOR_BACKGROUND = LCD_COLOR_BLACK;
 
@@ -208,14 +219,12 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM5_Init();
   MX_TIM8_Init();
-  MX_USART1_UART_Init();
-  MX_USART6_UART_Init();
+  MX_ADC1_Init();
   MX_DAC_Init();
   MX_FMC_Init();
   MX_DMA2D_Init();
   MX_CRC_Init();
   MX_RNG_Init();
-  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   BSP_LCD_Init();
   BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
@@ -245,25 +254,21 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* definition and creation of Queue_E */
-  osMessageQDef(Queue_E, 16, uint16_t);
-  Queue_EHandle = osMessageCreate(osMessageQ(Queue_E), NULL);
-
-  /* definition and creation of Queue_F */
-  osMessageQDef(Queue_F, 1, uint8_t);
-  Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
-
   /* definition and creation of Queue_J */
   osMessageQDef(Queue_J, 16, uint16_t);
   Queue_JHandle = osMessageCreate(osMessageQ(Queue_J), NULL);
 
-  /* definition and creation of Queue_P */
-  osMessageQDef(Queue_P, 16, uint16_t);
-  Queue_PHandle = osMessageCreate(osMessageQ(Queue_P), NULL);
-
   /* definition and creation of Queue_N */
   osMessageQDef(Queue_N, 16, uint16_t);
   Queue_NHandle = osMessageCreate(osMessageQ(Queue_N), NULL);
+
+  /* definition and creation of Queue_F */
+  osMessageQDef(Queue_F, 16, uint16_t);
+  Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
+
+  /* definition and creation of Queue_E */
+  osMessageQDef(Queue_E, 16, uint16_t);
+  Queue_EHandle = osMessageCreate(osMessageQ(Queue_E), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -285,6 +290,14 @@ int main(void)
   /* definition and creation of Projectile */
   osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 128);
   ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
+
+  /* definition and creation of IRQ_BP */
+  osThreadDef(IRQ_BP, f_IRQ_BP, osPriorityHigh, 0, 128);
+  IRQ_BPHandle = osThreadCreate(osThread(IRQ_BP), NULL);
+
+  /* definition and creation of tir_joueur */
+  osThreadDef(tir_joueur, f_tir_joueur, osPriorityNormal, 0, 128);
+  tir_joueurHandle = osThreadCreate(osThread(tir_joueur), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1294,11 +1307,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int envoie_score( int score){
-	socket
-  socket = udp_new();
-return 0
-}
+
 
 /* USER CODE END 4 */
 
@@ -1568,9 +1577,76 @@ void f_projectile(void const * argument)
 	  }
 	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
 
-
   }
   /* USER CODE END f_projectile */
+}
+
+/* USER CODE BEGIN Header_f_IRQ_BP */
+/**
+* @brief Function implementing the IRQ_BP thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_f_IRQ_BP */
+void f_IRQ_BP(void const * argument)
+{
+  /* USER CODE BEGIN f_IRQ_BP */
+	// Jsp pk long mais ca ne renvoie pas d'erreur. C'était initialement short sur google
+	long sHigherPriorityTaskWoken = pdFALSE;
+
+	/* 'Give' the semaphore to unblock the button task. */
+
+	xSemaphoreGiveFromISR( xButtonSemaphore, &sHigherPriorityTaskWoken );
+
+	/* If giving the semaphore unblocked a task, and the unblocked task has a
+		priority that is higher than the currently running task, then
+		sHigherPriorityTaskWoken will have been set to pdTRUE.  Passing a pdTRUE
+		value to portYIELD_FROM_ISR() will cause this interrupt to return directly
+		to the higher priority unblocked task. */
+		portYIELD_FROM_ISR( sHigherPriorityTaskWoken );
+
+
+  /* USER CODE END f_IRQ_BP */
+}
+
+/* USER CODE BEGIN Header_f_tir_joueur */
+/**
+* @brief Function implementing the tir_joueur thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_f_tir_joueur */
+void f_tir_joueur(void const * argument)
+{
+  /* USER CODE BEGIN f_tir_joueur */
+	/* Ensure the semaphore is created before it gets used. */
+	vSemaphoreCreateBinary( xButtonSemaphore );
+  /* Infinite loop */
+  for(;;)
+  {
+
+	  /* Block on the semaphore to wait for an interrupt event.  The semaphore
+		is 'given' from f_IRQ_BP() below.  Using portMAX_DELAY as the
+		block time will cause the task to block indefinitely provided
+		INCLUDE_vTaskSuspend is set to 1 in FreeRTOSConfig.h. */
+		xSemaphoreTake( xButtonSemaphore, portMAX_DELAY );
+
+		/* The button must have been pushed for this line to be executed.
+		Simply toggle the LED. */
+		HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,!LED);
+
+		/* Wait a short time then clear any pending button pushes as a crude
+		method of debouncing the switch.  xSemaphoreTake() uses a block time of
+		zero this time so it returns immediately rather than waiting for the
+		interrupt to occur. */
+
+		BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
+		BSP_LCD_FillRect(50, 50, 40, 40);
+
+		vTaskDelay( butDEBOUNCE_DELAY );
+		xSemaphoreTake( xButtonSemaphore, 0 );
+  }
+  /* USER CODE END f_tir_joueur */
 }
 
  /**
