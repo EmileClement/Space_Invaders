@@ -75,7 +75,6 @@ osThreadId GameMasterHandle;
 osThreadId Joueur_1Handle;
 osThreadId Block_EnemieHandle;
 osThreadId ProjectileHandle;
-osThreadId IRQ_BPHandle;
 osMessageQId Queue_JHandle;
 osMessageQId Queue_NHandle;
 osMessageQId Queue_FHandle;
@@ -105,7 +104,6 @@ void f_GameMaster(void const * argument);
 void f_Joueur_1(void const * argument);
 void f_block_enemie(void const * argument);
 void f_projectile(void const * argument);
-void f_IRQ_BP(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -176,7 +174,6 @@ uint32_t Limit_ennemis_x = 50;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  char text[50] = {};
   static TS_StateTypeDef TS_State;
   ADC_ChannelConfTypeDef sConfig = {0};
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -252,7 +249,7 @@ int main(void)
   Queue_JHandle = osMessageCreate(osMessageQ(Queue_J), NULL);
 
   /* definition and creation of Queue_N */
-  osMessageQDef(Queue_N, 16, uint16_t);
+  osMessageQDef(Queue_N, 3, struct Missile);
   Queue_NHandle = osMessageCreate(osMessageQ(Queue_N), NULL);
 
   /* definition and creation of Queue_F */
@@ -284,10 +281,6 @@ int main(void)
   osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 128);
   ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
 
-  /* definition and creation of IRQ_BP */
-  osThreadDef(IRQ_BP, f_IRQ_BP, osPriorityAboveNormal, 0, 128);
-  IRQ_BPHandle = osThreadCreate(osThread(IRQ_BP), NULL);
-
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -301,12 +294,12 @@ int main(void)
   while (1)
   {
     /* Code de base */
-    HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,
-                      HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
-    HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,
-                      HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin));
-    sprintf(text, "BP1 : %d", HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
-    BSP_LCD_DisplayStringAtLine(5, (uint8_t *)text);
+//    HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,
+//                      HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
+//    HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,
+//                      HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin));
+//    sprintf(text, "BP1 : %d", HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
+//    BSP_LCD_DisplayStringAtLine(5, (uint8_t *)text);
 
 
       ;
@@ -1137,11 +1130,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BP2_Pin BP1_Pin */
-  GPIO_InitStruct.Pin = BP2_Pin|BP1_Pin;
+  /*Configure GPIO pin : BP2_Pin */
+  GPIO_InitStruct.Pin = BP2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(BP2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED14_Pin LED15_Pin */
   GPIO_InitStruct.Pin = LED14_Pin|LED15_Pin;
@@ -1226,6 +1219,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
   HAL_GPIO_Init(VCP_TX_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : BP_interrupt1_Pin */
+  GPIO_InitStruct.Pin = BP_interrupt1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BP_interrupt1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB_Pin */
+  GPIO_InitStruct.Pin = PB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(PB_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : LCD_INT_Pin */
   GPIO_InitStruct.Pin = LCD_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
@@ -1293,10 +1298,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  /* Prevent unused argument(s) compilation warning */
+	BaseType_t pxHigherPriorityTaskWoken = pdTRUE;
+ //  &pxHigherPriorityTaskWoken =
+  struct Missile missile = {joueur.x, joueur.y, 1, 0, 1, LCD_COLOR_LIGHTBLUE, 2, 1};
+  HAL_GPIO_TogglePin(LED13_GPIO_Port, LED13_Pin);
+  xQueueSendFromISR(Queue_NHandle, &missile, &pxHigherPriorityTaskWoken);
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_GPIO_EXTI_Callback could be implemented in the user file
+   */
+}
 
 /* USER CODE END 4 */
 
@@ -1493,7 +1513,7 @@ void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
-  const TickType_t xPeriodeTache = 5000;
+  const TickType_t xPeriodeTache = 50000;
   /* Infinite loop */
   struct Missile liste_missile[20];
   struct Missile missile;
@@ -1507,8 +1527,8 @@ void f_projectile(void const * argument)
   for (;;)
   {
 
-	  xQueueReceive(Queue_NHandle, &missile, 0);
-	  if (missile.valide == 1){
+	  if (xQueueReceive(Queue_NHandle, &missile, 0) == pdPASS)
+	  {
 		  liste_missile[indice++] = missile;
 	  }
 
@@ -1519,7 +1539,7 @@ void f_projectile(void const * argument)
 		  if (liste_missile[i].valide == 1)
 		  {
 			  // Si le missile appartient au joueur :
-			  if (liste_missile[i].equipe == 0)
+			  if (liste_missile[i].equipe == 1)
 			  {
 				  if (liste_missile[i].x >= Limit_ennemis_x)
 				  {
@@ -1529,10 +1549,14 @@ void f_projectile(void const * argument)
 
 				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
 					{
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+					  BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
+					  BSP_LCD_FillRect(joueur.x, joueur.y, 20, 20);
 					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
 					  liste_missile[i].y = liste_missile[i].y + liste_missile[i].dy;
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
+					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
+					  BSP_LCD_SetTextColor(liste_missile[i].color);
+					  BSP_LCD_FillRect(liste_missile[i].x, liste_missile[i].y, 20, 20);
 					}
 				  //TODO test sur tous les ennemis
 				  else
@@ -1542,7 +1566,7 @@ void f_projectile(void const * argument)
 				  }
 			  }
 			  // Si le missile appartient aux ennemis
-			  else if (liste_missile[i].equipe == 1)
+			  else if (liste_missile[i].equipe == 0)
 			  {
 				  if ((liste_missile[i].x == joueur.x)&&(liste_missile[i].y == joueur.y))
 				  {
@@ -1571,38 +1595,6 @@ void f_projectile(void const * argument)
 
   }
   /* USER CODE END f_projectile */
-}
-
-/* USER CODE BEGIN Header_f_IRQ_BP */
-/**
-* @brief Function implementing the IRQ_BP thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_f_IRQ_BP */
-void f_IRQ_BP(void const * argument)
-{
-  /* USER CODE BEGIN f_IRQ_BP */
-  TickType_t xLastWakeTime;
-  // Faudrait convertir en ms mais jsp comment
-  const TickType_t xPeriodeTache = 10;
-
-  /* Infinite loop */
-  for(;;)
-  {
-	  if (HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin)==0){
-		  struct Missile missile = {joueur.x, joueur.y, 1, 0, 1, LCD_COLOR_LIGHTBLUE, 2, 1};
-		  HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,1);
-		  xQueueSend(Queue_NHandle, &missile,0);
-	  }
-	  if(HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin) ==0){
-		  struct Missile missile = {joueur.x, joueur.y, 0, 1, 1, LCD_COLOR_YELLOW , 2, 1};
-		  HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,1);
-		  xQueueSend(Queue_NHandle, &missile,0);
-	  }
-	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
-  }
-  /* USER CODE END f_IRQ_BP */
 }
 
  /**
