@@ -20,5 +20,5 @@ main.c:1330:6:f_GameMaster	32	static
 main.c:1377:6:f_Joueur_1	96	static
 main.c:1459:6:f_block_enemie	1016	static
 main.c:1512:6:f_projectile	384	static
-main.c:1608:6:HAL_TIM_PeriodElapsedCallback	16	static
-main.c:1625:6:Error_Handler	4	static,ignoring_inline_asm
+main.c:1610:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:1627:6:Error_Handler	4	static,ignoring_inline_asm

@@ -1513,7 +1513,7 @@ void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
-  const TickType_t xPeriodeTache = 50000;
+  const TickType_t xPeriodeTache = 100000;
   /* Infinite loop */
   struct Missile liste_missile[20];
   struct Missile missile;
@@ -1550,6 +1550,7 @@ void f_projectile(void const * argument)
 				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
 					{
 					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
+					  taskENTER_CRITICAL();
 					  BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
 					  BSP_LCD_FillRect(joueur.x, joueur.y, 20, 20);
 					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
@@ -1557,6 +1558,7 @@ void f_projectile(void const * argument)
 					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
 					  BSP_LCD_SetTextColor(liste_missile[i].color);
 					  BSP_LCD_FillRect(liste_missile[i].x, liste_missile[i].y, 20, 20);
+					  taskEXIT_CRITICAL();
 					}
 				  //TODO test sur tous les ennemis
 				  else
