@@ -15,5 +15,4 @@ Pour indiquer le joueur, on utilise 1 et pour les méchants on utilise 0.
 ### Game_master
 
 Si le game master reçoit un message via FHandle, une des deux entités est morte. Si la variable vaut 0, les méchants sont mort. Si elle vaut 1, le joueur est mort.
-
  
