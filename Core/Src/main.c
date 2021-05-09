@@ -114,12 +114,18 @@ void f_projectile(void const * argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+const uint16_t joueur_width = 20;
+const uint16_t joueur_height = 20;
+
+const uint16_t monstre_width = 20;
+const uint16_t monstre_height = 20;
+
 struct Missile
 {
 	uint16_t x;
 	uint16_t y;
-	uint8_t dx;
-	uint8_t dy;
+	int8_t dx;
+	int8_t dy;
 	uint8_t equipe;
 	uint32_t color;
 	uint8_t damage;
@@ -129,12 +135,12 @@ struct Missile
 struct Joueur
 {
 	// uint32_t et pas 16 car fonction d'affichage bitmap (j'en sais pas plus)
-	uint32_t x;
-	uint32_t y;
-	uint8_t dx;
-	uint8_t dy;
-	uint8_t health;
-	struct Missile missile;
+	uint32_t x; // Position de l'angle superieur gauche
+	uint32_t y; // Position de l'angle superieur gauche
+	int8_t dx; // Vitesse du joueur
+	int8_t dy; // Vitesse du joueur
+	uint8_t health; // Vie du joueur
+	struct Missile missile; // Missile lancé par le joueur
 };
 
 struct Monster
@@ -1294,10 +1300,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int envoie_score( int score){
+static int envoie_score( int score){
 	socket
   socket = udp_new();
-return 0
+return 0;
 }
 
 /* USER CODE END 4 */
@@ -1361,8 +1367,6 @@ void f_Joueur_1(void const * argument)
   /* USER CODE BEGIN f_Joueur_1 */
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 10;
-  uint16_t Width = 20;
-  uint16_t Height = 20;
   uint32_t joystick_h, joystick_v;
   uint8_t stop = 1;
 
@@ -1408,15 +1412,15 @@ void f_Joueur_1(void const * argument)
 	while (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK);
 	joystick_v = HAL_ADC_GetValue(&hadc1);
 
-	if ((joueur.y < LCD_WIDTH- Width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
+	if ((joueur.y < LCD_WIDTH- joueur_width - joueur.dy)&&(joystick_h < 1900)) joueur.y += joueur.dy;
 	if ((joueur.y > joueur.dy)&&(joystick_h > 2100)) joueur.y -= joueur.dy;
 
-	if ((joueur.x < LCD_HEIGHT - Height - joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
+	if ((joueur.x < LCD_HEIGHT - joueur_height - joueur.dx)&&(joystick_v < 1900)) joueur.x += joueur.dx;
 	if ((joueur.x >  joueur.dx)&&(joystick_v > 2100)) joueur.x -= joueur.dx;
 
 
 	BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
-	BSP_LCD_FillRect(joueur.x, joueur.y, Width, Height);
+	BSP_LCD_FillRect(joueur.x, joueur.y, joueur_width, joueur_height);
 
 	if (xQueueReceive(Queue_JHandle, &missile, 0) == pdPASS)
 		joueur.health = joueur.health - missile.damage;
@@ -1496,8 +1500,9 @@ void f_projectile(void const * argument)
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
   const TickType_t xPeriodeTache = 5000;
+  const int TAILLE_LISTE_MISSILE = 25;
   /* Infinite loop */
-  struct Missile liste_missile[20];
+  struct Missile liste_missile[TAILLE_LISTE_MISSILE];
   struct Missile missile = {70, 70, 1, 0, 0, LCD_COLOR_WHITE,  1,1};
   uint8_t indice = 1;
   liste_missile[0] = missile;
@@ -1509,6 +1514,28 @@ void f_projectile(void const * argument)
 
   for (;;)
   {
+	  for(int idx_missile = 0; idx_missile < TAILLE_LISTE_MISSILE; idx_missile++){
+		  if(liste_missile[idx_missile].valide){
+			  new_x = liste_missile[idx_missile].x + liste_missile[idx_missile].dx;
+			  new_y = liste_missile[idx_missile].y + liste_missile[idx_missile].dy;
+			  if ((new_x<0)|(new_x>LCD_WIDTH)|(new_y<0)|(new_y>LCD_HEIGHT))
+				  liste_missile[idx_missile].valide = 0;
+				  //TODO e
+			  if (liste_missile[idx_missile].equipe == 0)&&(1){//TODO condition de choc avec le joueur
+				xQueueSend(Queue_JHandle, 1, 0);
+			  }
+			  if (liste_missile[idx_missile].equipe == 1){
+				  for (int idx_mechant=0)
+			  }
+		  }
+
+	  }
+
+
+
+
+
+	  /*
 	  //xQueueReceive(Queue_NHandle, &missile, 0);
 	  //liste_missile[indice++] = missile;
 
@@ -1566,10 +1593,11 @@ void f_projectile(void const * argument)
 
 		  }
 	  }
+	  */
 	  vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
 
-
   }
+
   /* USER CODE END f_projectile */
 }
 
