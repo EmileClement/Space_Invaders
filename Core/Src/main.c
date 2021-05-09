@@ -17,6 +17,8 @@
  *
  *                             Bonjour ! J'aime beaucoup l'informatique industrielle
  *
+ *                             Licorne magique
+ *
  ******************************************************************************
  */
 /* USER CODE END Header */
