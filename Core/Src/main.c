@@ -127,13 +127,17 @@ void f_projectile(void const * argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+enum Camps_missile{
+  MISSILE_AMI, MISSILE_ENEMIE
+};
+
 struct Missile
 {
 	uint16_t x;
 	uint16_t y;
-	uint8_t dx;
-	uint8_t dy;
-	uint8_t equipe;
+	int8_t dx;
+	int8_t dy;
+	enum Camps_missile equipe;
 	uint32_t color;
 	uint8_t damage;
 	uint8_t valide;
@@ -144,8 +148,8 @@ struct Joueur
 	// uint32_t et pas 16 car fonction d'affichage bitmap (j'en sais pas plus)
 	uint32_t x;
 	uint32_t y;
-	uint8_t dx;
-	uint8_t dy;
+	int8_t dx;
+	int8_t dy;
 	uint8_t health;
 	struct Missile missile;
 };
@@ -158,7 +162,6 @@ struct Monster
 	struct Missile missile;
 	uint8_t type;
 	uint8_t health;
-
 };
 
 
