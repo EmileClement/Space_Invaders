@@ -2,10 +2,10 @@
 interface "CAN Joystick" as CAN
 interface "Ecran" as LCD
 interface "Ethernet" as ether
-interface "Queue\nQueue_J\nchoc joueur" as Queue_J
-interface "Queue\nQueue_E\nchoc ennemie" as Queue_E
-interface "Queue\nQueue_F\nfin du jeu" as Queue_F
-interface "Queue\nQueue_N\nnouveau projectile" as Queue_N
+Queue "Queue_J\nchoc joueur" as Queue_J
+Queue "Queue_E\nchoc ennemie" as Queue_E
+Queue "Queue_F\nfin du jeu" as Queue_F
+Queue "Queue_N\nnouveau projectile" as Queue_N
 component t_gm[
 Thread : game_master
 ===
@@ -40,7 +40,7 @@ T = 20 ms
 gère les projectiles
 gère les colisions
 ]
-[t_j1] --> CAN : lit la valeur
+[t_j1] --( CAN : lit la valeur
 [t_proj] --> Queue_E : touché
 [t_proj] --> Queue_J : touché
 Queue_E --> [t_ennemie]
@@ -52,12 +52,12 @@ Queue_F --> [t_gm]
 [t_j1] --> Queue_N : nouveau tire des ennemie
 Queue_N --> [t_proj]
 
-[t_j1] --> LCD
-[t_ennemie] --> LCD
-[t_proj] --> LCD
-[t_gm] --> LCD
+[t_j1] --( LCD
+[t_ennemie] --( LCD
+[t_proj] --( LCD
+[t_gm] --( LCD
 
-[t_gm]-->ether
+[t_gm] --( ether
 
 [t_gm]..>[t_j1] : suspend
 [t_gm]..>[t_ennemie] : suspend
