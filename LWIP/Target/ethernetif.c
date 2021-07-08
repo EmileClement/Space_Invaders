@@ -217,7 +217,7 @@ static void low_level_init(struct netif *netif)
   MACAddr[1] = 0x80;
   MACAddr[2] = 0xE1;
   MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
+  MACAddr[4] = 0xE0;
   MACAddr[5] = 0x00;
   heth.Init.MACAddr = &MACAddr[0];
   heth.Init.RxMode = ETH_RXINTERRUPT_MODE;
