@@ -1,4 +1,5 @@
 Core/Src/sysmem.o: ../Core/Src/sysmem.c \
+ ../Middlewares/Third_Party/LwIP/src/include/compat/stdc/errno.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/errno.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h \
  ../LWIP/Target/lwipopts.h ../Core/Inc/main.h \
@@ -41,14 +42,14 @@ Core/Src/sysmem.o: ../Core/Src/sysmem.c \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rng.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/debug.h \
  ../Middlewares/Third_Party/LwIP/src/include/lwip/arch.h \
  ../Middlewares/Third_Party/LwIP/system/arch/cc.h \
  ../Middlewares/Third_Party/LwIP/system/arch/cpu.h
+
+../Middlewares/Third_Party/LwIP/src/include/compat/stdc/errno.h:
 
 ../Middlewares/Third_Party/LwIP/src/include/lwip/errno.h:
 
@@ -135,10 +136,6 @@ Core/Src/sysmem.o: ../Core/Src/sysmem.c \
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr_ex.h:
 
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rng.h:
-
-../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi.h:
-
-../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi_ex.h:
 
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h:
 

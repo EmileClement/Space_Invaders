@@ -101,10 +101,10 @@ static void MX_DMA2D_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RNG_Init(void);
 static void MX_ADC1_Init(void);
-void f_GameMaster(void const *argument);
-void f_Joueur_1(void const *argument);
-void f_block_enemie(void const *argument);
-void f_projectile(void const *argument);
+void f_GameMaster(void const * argument);
+void f_Joueur_1(void const * argument);
+void f_block_enemie(void const * argument);
+void f_projectile(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -223,12 +223,12 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM5_Init();
   MX_TIM8_Init();
-  MX_ADC1_Init();
   MX_DAC_Init();
   MX_FMC_Init();
   MX_DMA2D_Init();
   MX_CRC_Init();
   MX_RNG_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   BSP_LCD_Init();
   BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
@@ -279,29 +279,21 @@ int main(void)
   osMessageQDef(Queue_E, 8, struct Collision);
   Queue_EHandle = osMessageCreate(osMessageQ(Queue_E), NULL);
 
-  /* definition and creation of Queue_F */
-  osMessageQDef(Queue_F, 16, uint16_t);
-  Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
-
-  /* definition and creation of Queue_E */
-  osMessageQDef(Queue_E, 16, uint16_t);
-  Queue_EHandle = osMessageCreate(osMessageQ(Queue_E), NULL);
-
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of GameMaster */
-  osThreadDef(GameMaster, f_GameMaster, osPriorityHigh, 0, 128);
+  osThreadDef(GameMaster, f_GameMaster, osPriorityNormal, 0, 128);
   GameMasterHandle = osThreadCreate(osThread(GameMaster), NULL);
 
   /* definition and creation of Joueur_1 */
-  osThreadDef(Joueur_1, f_Joueur_1, osPriorityAboveNormal, 0, 128);
+  osThreadDef(Joueur_1, f_Joueur_1, osPriorityNormal, 0, 128);
   Joueur_1Handle = osThreadCreate(osThread(Joueur_1), NULL);
 
   /* definition and creation of Block_Enemie */
-  osThreadDef(Block_Enemie, f_block_enemie, osPriorityBelowNormal, 0, 128);
+  osThreadDef(Block_Enemie, f_block_enemie, osPriorityIdle, 0, 128);
   Block_EnemieHandle = osThreadCreate(osThread(Block_Enemie), NULL);
 
   /* definition and creation of Projectile */
@@ -395,7 +387,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
@@ -405,7 +398,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC | RCC_PERIPHCLK_CLK48;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC|RCC_PERIPHCLK_CLK48;
   PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
   PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
   PeriphClkInitStruct.PLLSAI.PLLSAIQ = 2;
@@ -466,6 +459,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -515,6 +509,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
+
 }
 
 /**
@@ -545,6 +540,7 @@ static void MX_CRC_Init(void)
   /* USER CODE BEGIN CRC_Init 2 */
 
   /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -582,6 +578,7 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 2 */
 
   /* USER CODE END DAC_Init 2 */
+
 }
 
 /**
@@ -618,6 +615,7 @@ static void MX_DMA2D_Init(void)
   /* USER CODE BEGIN DMA2D_Init 2 */
 
   /* USER CODE END DMA2D_Init 2 */
+
 }
 
 /**
@@ -679,6 +677,7 @@ static void MX_LTDC_Init(void)
   /* USER CODE BEGIN LTDC_Init 2 */
 
   /* USER CODE END LTDC_Init 2 */
+
 }
 
 /**
@@ -704,6 +703,7 @@ static void MX_RNG_Init(void)
   /* USER CODE BEGIN RNG_Init 2 */
 
   /* USER CODE END RNG_Init 2 */
+
 }
 
 /**
@@ -750,6 +750,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+
 }
 
 /**
@@ -794,6 +795,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
@@ -859,6 +861,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+
 }
 
 /**
@@ -903,6 +906,7 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
+
 }
 
 /**
@@ -981,6 +985,7 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 2 */
   HAL_TIM_MspPostInit(&htim8);
+
 }
 
 /* FMC initialization function */
@@ -1022,7 +1027,7 @@ static void MX_FMC_Init(void)
 
   if (HAL_SDRAM_Init(&hsdram1, &SdramTiming) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler( );
   }
 
   /* USER CODE BEGIN FMC_Init 2 */
@@ -1053,7 +1058,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED14_Pin | LED15_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED14_Pin|LED15_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -1071,7 +1076,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LCD_DISP_GPIO_Port, LCD_DISP_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOH, LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOH, LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
+                          |LED2_Pin|LED18_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(EXT_RST_GPIO_Port, EXT_RST_Pin, GPIO_PIN_RESET);
@@ -1083,7 +1089,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ARDUINO_SCL_D15_Pin ARDUINO_SDA_D14_Pin */
-  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin | ARDUINO_SDA_D14_Pin;
+  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin|ARDUINO_SDA_D14_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1092,7 +1098,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : ULPI_D7_Pin ULPI_D6_Pin ULPI_D5_Pin ULPI_D2_Pin
                            ULPI_D1_Pin ULPI_D4_Pin */
-  GPIO_InitStruct.Pin = ULPI_D7_Pin | ULPI_D6_Pin | ULPI_D5_Pin | ULPI_D2_Pin | ULPI_D1_Pin | ULPI_D4_Pin;
+  GPIO_InitStruct.Pin = ULPI_D7_Pin|ULPI_D6_Pin|ULPI_D5_Pin|ULPI_D2_Pin
+                          |ULPI_D1_Pin|ULPI_D4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1100,13 +1107,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP2_Pin BP1_Pin */
-  GPIO_InitStruct.Pin = BP2_Pin | BP1_Pin;
+  GPIO_InitStruct.Pin = BP2_Pin|BP1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BP2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED14_Pin LED15_Pin */
-  GPIO_InitStruct.Pin = LED14_Pin | LED15_Pin;
+  GPIO_InitStruct.Pin = LED14_Pin|LED15_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1133,14 +1140,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(Audio_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin LED16_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin | LED16_Pin;
+  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|LED16_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED3_Pin LCD_DISP_Pin */
-  GPIO_InitStruct.Pin = LED3_Pin | LCD_DISP_Pin;
+  GPIO_InitStruct.Pin = LED3_Pin|LCD_DISP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1166,7 +1173,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TP3_Pin NC2_Pin */
-  GPIO_InitStruct.Pin = TP3_Pin | NC2_Pin;
+  GPIO_InitStruct.Pin = TP3_Pin|NC2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
@@ -1181,7 +1188,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : LED13_Pin LED17_Pin LED11_Pin LED12_Pin
                            LED2_Pin LED18_Pin */
-  GPIO_InitStruct.Pin = LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin;
+  GPIO_InitStruct.Pin = LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
+                          |LED2_Pin|LED18_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1203,18 +1211,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
   HAL_GPIO_Init(VCP_TX_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BP_interrupt1_Pin */
-  GPIO_InitStruct.Pin = BP_interrupt1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BP_interrupt1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB_Pin */
-  GPIO_InitStruct.Pin = PB_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(PB_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : LCD_INT_Pin */
   GPIO_InitStruct.Pin = LCD_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
@@ -1222,7 +1218,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LCD_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC7 PC6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_6;
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1238,7 +1234,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(ULPI_NXT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP_JOYSTICK_Pin RMII_RXER_Pin */
-  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin | RMII_RXER_Pin;
+  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin|RMII_RXER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -1252,7 +1248,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_STP_Pin ULPI_DIR_Pin */
-  GPIO_InitStruct.Pin = ULPI_STP_Pin | ULPI_DIR_Pin;
+  GPIO_InitStruct.Pin = ULPI_STP_Pin|ULPI_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1267,7 +1263,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(EXT_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LCD_SCL_Pin LCD_SDA_Pin */
-  GPIO_InitStruct.Pin = LCD_SCL_Pin | LCD_SDA_Pin;
+  GPIO_InitStruct.Pin = LCD_SCL_Pin|LCD_SDA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1275,7 +1271,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
-  GPIO_InitStruct.Pin = ULPI_CLK_Pin | ULPI_D0_Pin;
+  GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1283,12 +1279,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB14 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14 | GPIO_PIN_15;
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -1300,7 +1297,7 @@ const uint32_t Couleur_vide = LCD_COLOR_BLACK;
 
 static int envoie_score(int score)
 {
-  socket socket_udp = udp_new();
+  //socket socket_udp = udp_new();
   return 0;
 }
 
@@ -1360,7 +1357,7 @@ uint8_t colision_missile(uint16_t m_pos_x, uint16_t m_pos_y, uint16_t o_pos_x, u
   * @retval None
   */
 /* USER CODE END Header_f_GameMaster */
-void f_GameMaster(void const *argument)
+void f_GameMaster(void const * argument)
 {
   /* init code for LWIP */
   MX_LWIP_Init();
@@ -1402,7 +1399,7 @@ void f_GameMaster(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_Joueur_1 */
-void f_Joueur_1(void const *argument)
+void f_Joueur_1(void const * argument)
 {
   /* USER CODE BEGIN f_Joueur_1 */
   TickType_t xLastWakeTime;
@@ -1486,7 +1483,7 @@ void f_Joueur_1(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_block_enemie */
-void f_block_enemie(void const *argument)
+void f_block_enemie(void const * argument)
 {
   /* USER CODE BEGIN f_block_enemie */
   TickType_t xLastWakeTime;
@@ -1515,7 +1512,7 @@ void f_block_enemie(void const *argument)
     // TODO déplacement des ennemies
 
     nombre_monstre = 0;
-    for (int idx1 = 0; idx1 < 8, idx1++)
+    for (int idx1 = 0; idx1 < 8; idx1++)
     {
       for (int idx2 = 0; idx2 < 3; idx2++)
       {
@@ -1572,7 +1569,7 @@ void f_block_enemie(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_projectile */
-void f_projectile(void const *argument)
+void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
@@ -1701,7 +1698,7 @@ void f_projectile(void const *argument)
   /* USER CODE END f_projectile */
 }
 
-/**
+ /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -1714,8 +1711,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6)
-  {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1738,7 +1734,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

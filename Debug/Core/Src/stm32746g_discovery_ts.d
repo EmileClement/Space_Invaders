@@ -39,8 +39,6 @@ Core/Src/stm32746g_discovery_ts.o: ../Core/Src/stm32746g_discovery_ts.c \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rng.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi.h \
- ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi_ex.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h \
  ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h \
  ../Core/Inc/ft5336.h ../Core/Inc/ts.h
@@ -126,10 +124,6 @@ Core/Src/stm32746g_discovery_ts.o: ../Core/Src/stm32746g_discovery_ts.c \
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr_ex.h:
 
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_rng.h:
-
-../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi.h:
-
-../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi_ex.h:
 
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h:
 
