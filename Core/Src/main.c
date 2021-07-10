@@ -101,10 +101,10 @@ static void MX_DMA2D_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RNG_Init(void);
 static void MX_ADC1_Init(void);
-void f_GameMaster(void const * argument);
-void f_Joueur_1(void const * argument);
-void f_block_enemie(void const * argument);
-void f_projectile(void const * argument);
+void f_GameMaster(void const *argument);
+void f_Joueur_1(void const *argument);
+void f_block_enemie(void const *argument);
+void f_projectile(void const *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -113,25 +113,34 @@ void f_projectile(void const * argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-enum Camps_missile{
-  MISSILE_AMI, MISSILE_ENEMIE
+enum Camps_missile
+{
+  MISSILE_AMI,
+  MISSILE_ENEMIE
 };
+
+enum End_type
+{
+  END_TABLEAU_VIDE,
+  END_MORT_JOUEUR
+};
+
 const uint16_t joueur_width = 20;
 const uint16_t joueur_height = 20;
 
-const uint16_t monstre_width = 20;
-const uint16_t monstre_height = 20;
+const uint16_t monstre_width = 25;
+const uint16_t monstre_height = 15;
 
 struct Missile
 {
-	uint16_t x;
-	uint16_t y;
-	int8_t dx;
-	int8_t dy;
-	enum Camps_missile equipe;
-	uint32_t color;
-	uint8_t damage;
-	uint8_t valide;
+  uint16_t x;
+  uint16_t y;
+  int8_t dx;
+  int8_t dy;
+  enum Camps_missile equipe;
+  uint32_t color;
+  uint8_t damage;
+  uint8_t valide;
 };
 
 struct Joueur
@@ -147,9 +156,9 @@ struct Joueur
 
 struct Monster
 {
-  uint32_t x;
-  uint32_t y;
-  int8_t health;
+  int32_t x;
+  int32_t y;
+  int16_t health;
   // uint8_t pbmp; // TODO c'est quoi ca ?
   // uint8_t type; // TODO d'autre ennemies ?
   struct Missile missile;
@@ -162,14 +171,9 @@ struct Collision
   uint8_t damage;
 };
 
-enum Msg_Queue_F{ // TODO changer le type de la queue F
-  MSG_ennemie_mort,
-  MSG_joueur_mort
-};
-
 // Définition des paramètres du joueurs
 
-struct Joueur joueur = {10, 10, 1, 1, 3};
+struct Joueur joueur = {200, 200, 1, 1, 3};
 
 uint8_t LED = 1;
 
@@ -264,7 +268,7 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of Queue_F */
-  osMessageQDef(Queue_F, 1, uint8_t);
+  osMessageQDef(Queue_F, 1, enum End_type);
   Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
 
   /* definition and creation of Queue_N */
@@ -285,23 +289,23 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of GameMaster */
-  osThreadDef(GameMaster, f_GameMaster, osPriorityNormal, 0, 128);
+  osThreadDef(GameMaster, f_GameMaster, osPriorityHigh, 0, 1024);
   GameMasterHandle = osThreadCreate(osThread(GameMaster), NULL);
 
   /* definition and creation of Joueur_1 */
-  osThreadDef(Joueur_1, f_Joueur_1, osPriorityNormal, 0, 128);
+  osThreadDef(Joueur_1, f_Joueur_1, osPriorityAboveNormal, 0, 1024);
   Joueur_1Handle = osThreadCreate(osThread(Joueur_1), NULL);
 
   /* definition and creation of Block_Enemie */
-  osThreadDef(Block_Enemie, f_block_enemie, osPriorityIdle, 0, 128);
+  osThreadDef(Block_Enemie, f_block_enemie, osPriorityLow, 0, 1024);
   Block_EnemieHandle = osThreadCreate(osThread(Block_Enemie), NULL);
 
   /* definition and creation of Projectile */
-  osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 128);
+  osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 1024);
   ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  vQueueAddToRegistry(Queue_NHandle, "Queue Missile");
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -313,12 +317,12 @@ int main(void)
   while (1)
   {
     /* Code de base */
-//    HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,
-//                      HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
-//    HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,
-//                      HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin));
-//    sprintf(text, "BP1 : %d", HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
-//    BSP_LCD_DisplayStringAtLine(5, (uint8_t *)text);
+    //    HAL_GPIO_WritePin(LED13_GPIO_Port, LED13_Pin,
+    //                      HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
+    //    HAL_GPIO_WritePin(LED14_GPIO_Port, LED14_Pin,
+    //                      HAL_GPIO_ReadPin(BP2_GPIO_Port, BP2_Pin));
+    //    sprintf(text, "BP1 : %d", HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin));
+    //    BSP_LCD_DisplayStringAtLine(5, (uint8_t *)text);
 
     ;
 
@@ -387,8 +391,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
@@ -398,7 +401,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC|RCC_PERIPHCLK_CLK48;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC | RCC_PERIPHCLK_CLK48;
   PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
   PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
   PeriphClkInitStruct.PLLSAI.PLLSAIQ = 2;
@@ -459,7 +462,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
@@ -509,7 +511,6 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
-
 }
 
 /**
@@ -540,7 +541,6 @@ static void MX_CRC_Init(void)
   /* USER CODE BEGIN CRC_Init 2 */
 
   /* USER CODE END CRC_Init 2 */
-
 }
 
 /**
@@ -578,7 +578,6 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 2 */
 
   /* USER CODE END DAC_Init 2 */
-
 }
 
 /**
@@ -615,7 +614,6 @@ static void MX_DMA2D_Init(void)
   /* USER CODE BEGIN DMA2D_Init 2 */
 
   /* USER CODE END DMA2D_Init 2 */
-
 }
 
 /**
@@ -677,7 +675,6 @@ static void MX_LTDC_Init(void)
   /* USER CODE BEGIN LTDC_Init 2 */
 
   /* USER CODE END LTDC_Init 2 */
-
 }
 
 /**
@@ -703,7 +700,6 @@ static void MX_RNG_Init(void)
   /* USER CODE BEGIN RNG_Init 2 */
 
   /* USER CODE END RNG_Init 2 */
-
 }
 
 /**
@@ -750,7 +746,6 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
-
 }
 
 /**
@@ -795,7 +790,6 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-
 }
 
 /**
@@ -861,7 +855,6 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
-
 }
 
 /**
@@ -906,7 +899,6 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
-
 }
 
 /**
@@ -985,7 +977,6 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 2 */
   HAL_TIM_MspPostInit(&htim8);
-
 }
 
 /* FMC initialization function */
@@ -1027,7 +1018,7 @@ static void MX_FMC_Init(void)
 
   if (HAL_SDRAM_Init(&hsdram1, &SdramTiming) != HAL_OK)
   {
-    Error_Handler( );
+    Error_Handler();
   }
 
   /* USER CODE BEGIN FMC_Init 2 */
@@ -1058,7 +1049,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED14_Pin|LED15_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED14_Pin | LED15_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -1076,8 +1067,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LCD_DISP_GPIO_Port, LCD_DISP_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOH, LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
-                          |LED2_Pin|LED18_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOH, LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(EXT_RST_GPIO_Port, EXT_RST_Pin, GPIO_PIN_RESET);
@@ -1089,7 +1079,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ARDUINO_SCL_D15_Pin ARDUINO_SDA_D14_Pin */
-  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin|ARDUINO_SDA_D14_Pin;
+  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin | ARDUINO_SDA_D14_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1098,8 +1088,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : ULPI_D7_Pin ULPI_D6_Pin ULPI_D5_Pin ULPI_D2_Pin
                            ULPI_D1_Pin ULPI_D4_Pin */
-  GPIO_InitStruct.Pin = ULPI_D7_Pin|ULPI_D6_Pin|ULPI_D5_Pin|ULPI_D2_Pin
-                          |ULPI_D1_Pin|ULPI_D4_Pin;
+  GPIO_InitStruct.Pin = ULPI_D7_Pin | ULPI_D6_Pin | ULPI_D5_Pin | ULPI_D2_Pin | ULPI_D1_Pin | ULPI_D4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1107,13 +1096,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP2_Pin BP1_Pin */
-  GPIO_InitStruct.Pin = BP2_Pin|BP1_Pin;
+  GPIO_InitStruct.Pin = BP2_Pin | BP1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED14_Pin LED15_Pin */
-  GPIO_InitStruct.Pin = LED14_Pin|LED15_Pin;
+  GPIO_InitStruct.Pin = LED14_Pin | LED15_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1140,14 +1129,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(Audio_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin LED16_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|LED16_Pin;
+  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin | LED16_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED3_Pin LCD_DISP_Pin */
-  GPIO_InitStruct.Pin = LED3_Pin|LCD_DISP_Pin;
+  GPIO_InitStruct.Pin = LED3_Pin | LCD_DISP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1173,7 +1162,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TP3_Pin NC2_Pin */
-  GPIO_InitStruct.Pin = TP3_Pin|NC2_Pin;
+  GPIO_InitStruct.Pin = TP3_Pin | NC2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
@@ -1188,8 +1177,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : LED13_Pin LED17_Pin LED11_Pin LED12_Pin
                            LED2_Pin LED18_Pin */
-  GPIO_InitStruct.Pin = LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
-                          |LED2_Pin|LED18_Pin;
+  GPIO_InitStruct.Pin = LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1218,7 +1206,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LCD_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC7 PC6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_6;
+  GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1234,7 +1222,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(ULPI_NXT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP_JOYSTICK_Pin RMII_RXER_Pin */
-  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin|RMII_RXER_Pin;
+  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin | RMII_RXER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -1248,7 +1236,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_STP_Pin ULPI_DIR_Pin */
-  GPIO_InitStruct.Pin = ULPI_STP_Pin|ULPI_DIR_Pin;
+  GPIO_InitStruct.Pin = ULPI_STP_Pin | ULPI_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1263,7 +1251,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(EXT_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LCD_SCL_Pin LCD_SDA_Pin */
-  GPIO_InitStruct.Pin = LCD_SCL_Pin|LCD_SDA_Pin;
+  GPIO_InitStruct.Pin = LCD_SCL_Pin | LCD_SDA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1271,7 +1259,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
-  GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
+  GPIO_InitStruct.Pin = ULPI_CLK_Pin | ULPI_D0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1279,19 +1267,18 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB14 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
+  GPIO_InitStruct.Pin = GPIO_PIN_14 | GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
 
 const uint32_t Couleur_joueur = LCD_COLOR_CYAN;
-const uint32_t Couleur_monstre = LCD_COLOR_CYAN;
+const uint32_t Couleur_monstre = LCD_COLOR_RED;
 const uint32_t Couleur_missile = LCD_COLOR_WHITE;
 const uint32_t Couleur_vide = LCD_COLOR_BLACK;
 
@@ -1315,7 +1302,7 @@ void repopulate_ennemie_list(uint8_t wave)
     for (idx2 = 0; idx2 < 3; idx2++)
     {
       Table_ennemie[idx1][idx2].x = (2 * idx1 + 1) * monstre_width;
-      Table_ennemie[idx1][idx2].y = (2 * idx1 + 1) * monstre_height;
+      Table_ennemie[idx1][idx2].y = (2 * idx2 + 1) * monstre_height;
       Table_ennemie[idx1][idx2].health = wave / 2 + 1;
       Table_ennemie[idx1][idx2].missile.x = 0;
       Table_ennemie[idx1][idx2].missile.y = 0;
@@ -1324,7 +1311,7 @@ void repopulate_ennemie_list(uint8_t wave)
       Table_ennemie[idx1][idx2].missile.equipe = 0;
       Table_ennemie[idx1][idx2].missile.damage = 1;
       Table_ennemie[idx1][idx2].missile.valide = 1;
-      if ((nombre_aleatoire >> (idx1 * 8 + idx2)) && 1)
+      if ((nombre_aleatoire >> (idx2 * 8 + idx1)) & 1)
         Table_ennemie[idx1][idx2].health = 0;
     }
   }
@@ -1357,25 +1344,24 @@ uint8_t colision_missile(uint16_t m_pos_x, uint16_t m_pos_y, uint16_t o_pos_x, u
   * @retval None
   */
 /* USER CODE END Header_f_GameMaster */
-void f_GameMaster(void const * argument)
+void f_GameMaster(void const *argument)
 {
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
   const TickType_t xPeriodeTache = 100 / portTICK_PERIOD_MS;
-  // Si la variable end est à 1, le jeu s'arrete.
-  uint8_t end = 0;
   uint8_t wave = 0;
   repopulate_ennemie_list(wave);
-
+  enum End_type end;
   /* Infinite loop */
   for (;;)
   {
     while (xQueueReceive(Queue_FHandle, &end, (TickType_t)10) != pdPASS)
       ; // Tant qu'il n'y a pas de nouveau message
 
-    if (end == 1)
+    if (end == END_MORT_JOUEUR)
     {
       vTaskDelete(Block_EnemieHandle);
       vTaskDelete(ProjectileHandle);
@@ -1383,11 +1369,12 @@ void f_GameMaster(void const * argument)
       //TODO L'affichage de l'écran de fin et des scores
     }
 
-    if (end == 0)
+    if (end == END_TABLEAU_VIDE)
     {
       wave++;
       repopulate_ennemie_list(wave);
     }
+    vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END 5 */
 }
@@ -1399,15 +1386,18 @@ void f_GameMaster(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_f_Joueur_1 */
-void f_Joueur_1(void const * argument)
+void f_Joueur_1(void const *argument)
 {
   /* USER CODE BEGIN f_Joueur_1 */
   TickType_t xLastWakeTime;
-  const TickType_t xPeriodeTache = 100 / portTICK_PERIOD_MS;
+  xLastWakeTime = xTaskGetTickCount();
+
+  const TickType_t xPeriodeTache = 5 / portTICK_PERIOD_MS;
   uint32_t joystick_h, joystick_v;
-  uint8_t stop = 1;
 
   struct Missile missile;
+
+  uint8_t bouton_relache = 1;
 
   ADC_ChannelConfTypeDef sConfig3 = {0};
   sConfig3.Rank = ADC_REGULAR_RANK_1;
@@ -1436,7 +1426,6 @@ void f_Joueur_1(void const * argument)
   for (;;)
   {
     lcd_plot_rect(joueur.x, joueur.y, joueur_width, joueur_height, Couleur_vide);
-
     // BSP_LCD_DrawBitmap(uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
     HAL_ADC_ConfigChannel(&hadc3, &sConfig3);
     HAL_ADC_Start(&hadc3);
@@ -1466,11 +1455,19 @@ void f_Joueur_1(void const * argument)
       joueur.health = joueur.health - missile.damage;
     // On envoie 1 si le joueur est mort et on envoie 0 si les enemis sont tous morts
     if (joueur.health == 0)
-      xQueueSend(Queue_FHandle, &stop, 0);
+      xQueueSend(Queue_FHandle, END_MORT_JOUEUR, 0);
 
-    // TODO La condition sur une entrée analogique pour envoyer un missile
-    // struct Missile missile = {joueur.x, joueur.y,joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
-    // xQueueSend(Queue_NHandle,&missile,0);
+    if ((!HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin)) && bouton_relache)
+    {
+      bouton_relache = 0;
+      struct Missile missile = {joueur.x, joueur.y, joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
+      xQueueSend(Queue_NHandle, &missile, 0);
+      HAL_GPIO_TogglePin(LED11_GPIO_Port, LED11_Pin);
+    }
+    if (HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin))
+
+      bouton_relache = 1;
+
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_Joueur_1 */
@@ -1483,16 +1480,26 @@ void f_Joueur_1(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_f_block_enemie */
-void f_block_enemie(void const * argument)
+void f_block_enemie(void const *argument)
 {
   /* USER CODE BEGIN f_block_enemie */
+  enum Sens_ennemie
+  {
+    DROITE,
+    GAUCHE
+  };
   TickType_t xLastWakeTime;
-  const TickType_t xPeriodeTache = 500 / portTICK_PERIOD_MS; // Toute les demi secondes
-  uint8_t end = 0;
+  xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xPeriodeTache = 200 / portTICK_PERIOD_MS; // Toute les demi secondes
   uint8_t nombre_monstre;
   struct Collision collision;
-  uint8_t deplacement = 1;
-  struct Missile missile = {0,0,0,0,0,0,0,0};
+
+  int8_t vitesse = 5;
+  enum Sens_ennemie direction = DROITE;
+
+  struct Missile missile = {0, 0, 0, 0, 0, 0, 0, 0};
+  int32_t lim_droite;
+  int32_t lim_gauche;
   /* Infinite loop */
   for (;;)
   {
@@ -1508,7 +1515,35 @@ void f_block_enemie(void const * argument)
         lcd_plot_rect(Table_ennemie[idx1][idx2].x, Table_ennemie[idx1][idx2].y, monstre_width, monstre_height, Couleur_vide);
       }
     }
+    lim_droite = Table_ennemie[0][0].x;
+    lim_gauche = Table_ennemie[0][0].x;
+    for (int idx1 = 0; idx1 < 8; idx1++)
+    {
+      for (int idx2 = 0; idx2 < 3; idx2++)
+      {
+        if ((Table_ennemie[idx1][idx2].x > lim_droite) && (Table_ennemie[idx1][idx2].health > 0))
+          lim_droite = Table_ennemie[idx1][idx2].x;
+        if ((Table_ennemie[idx1][idx2].x < lim_gauche) && (Table_ennemie[idx1][idx2].health > 0))
+          lim_gauche = Table_ennemie[idx1][idx2].x;
+      }
+    }
 
+    if ((direction == DROITE) && (lim_droite + vitesse + monstre_width >= BSP_LCD_GetXSize()))
+      direction = GAUCHE;
+
+    else if ((direction == GAUCHE) && (lim_gauche <= vitesse))
+      direction = DROITE;
+
+    for (int idx1 = 0; idx1 < 8; idx1++)
+    {
+      for (int idx2 = 0; idx2 < 3; idx2++)
+      {
+        if (direction == DROITE)
+          Table_ennemie[idx1][idx2].x += vitesse;
+        if (direction == GAUCHE)
+          Table_ennemie[idx1][idx2].x -= vitesse;
+      }
+    }
     // TODO déplacement des ennemies
 
     nombre_monstre = 0;
@@ -1523,8 +1558,8 @@ void f_block_enemie(void const * argument)
         }
       }
     }
-    if (nombre_monstre)
-      xQueueSend(Queue_FHandle, &end, 0);
+    if (!nombre_monstre)
+      xQueueSend(Queue_FHandle, END_TABLEAU_VIDE, 0);
 
     /*
     xQueueReceive(Queue_EHandle, &collision, 0);
@@ -1569,10 +1604,11 @@ void f_block_enemie(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_f_projectile */
-void f_projectile(void const * argument)
+void f_projectile(void const *argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
   const TickType_t xPeriodeTache = 200 / portTICK_PERIOD_MS; // Toutes les 200 ms
   const int TAILLE_LISTE_MISSILE = 25;
   /* Infinite loop */
@@ -1597,7 +1633,7 @@ void f_projectile(void const * argument)
         new_y = liste_missile[idx_missile].y + liste_missile[idx_missile].dy;
         if ((new_x < 0) | (new_x > LCD_WIDTH) | (new_y < 0) | (new_y > LCD_HEIGHT))
           liste_missile[idx_missile].valide = 0;
-        if ((liste_missile[idx_missile].equipe == 0) & colision_missile(new_x, new_y, joueur.x, joueur.y, joueur_width, joueur_height))
+        if ((liste_missile[idx_missile].equipe == MISSILE_ENEMIE) & colision_missile(new_x, new_y, joueur.x, joueur.y, joueur_width, joueur_height))
         { //TODO condition de choc avec le joueur
           xQueueSend(Queue_JHandle, &liste_missile[idx_missile], 0);
           liste_missile[idx_missile].valide = 0;
@@ -1698,7 +1734,7 @@ void f_projectile(void const * argument)
   /* USER CODE END f_projectile */
 }
 
- /**
+/**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -1711,7 +1747,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM6)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1734,7 +1771,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
