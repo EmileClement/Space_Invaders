@@ -76,6 +76,7 @@ osThreadId GameMasterHandle;
 osThreadId Joueur_1Handle;
 osThreadId Block_EnemieHandle;
 osThreadId ProjectileHandle;
+osThreadId HUDHandle;
 osMessageQId Queue_FHandle;
 osMessageQId Queue_NHandle;
 osMessageQId Queue_JHandle;
@@ -101,13 +102,14 @@ static void MX_DMA2D_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RNG_Init(void);
 static void MX_ADC1_Init(void);
-void f_GameMaster(void const *argument);
-void f_Joueur_1(void const *argument);
-void f_block_enemie(void const *argument);
-void f_projectile(void const *argument);
+void f_GameMaster(void const * argument);
+void f_Joueur_1(void const * argument);
+void f_block_enemie(void const * argument);
+void f_projectile(void const * argument);
+void f_HUD(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+uint8_t proba_bernoulli(uint32_t numerateur, uint32_t denominateur);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -116,7 +118,7 @@ void f_projectile(void const *argument);
 enum Camps_missile
 {
   MISSILE_AMI,
-  MISSILE_ENEMIE
+  MISSILE_ENNEMI
 };
 
 enum End_type
@@ -133,12 +135,11 @@ const uint16_t monstre_height = 15;
 
 struct Missile
 {
-  uint16_t x;
-  uint16_t y;
+  int16_t x;
+  int16_t y;
   int8_t dx;
   int8_t dy;
   enum Camps_missile equipe;
-  uint32_t color;
   uint8_t damage;
   uint8_t valide;
 };
@@ -146,11 +147,11 @@ struct Missile
 struct Joueur
 {
   // uint32_t et pas 16 car fonction d'affichage bitmap (j'en sais pas plus)
-  uint32_t x;             // Position de l'angle superieur gauche
-  uint32_t y;             // Position de l'angle superieur gauche
+  int32_t x;              // Position de l'angle superieur gauche
+  int32_t y;              // Position de l'angle superieur gauche
   int8_t dx;              // Vitesse du joueur
   int8_t dy;              // Vitesse du joueur
-  uint8_t health;         // Vie du joueur
+  int8_t health;          // Vie du joueur
   struct Missile missile; // Missile lancé par le joueur
 };
 
@@ -173,18 +174,17 @@ struct Collision
 
 // Définition des paramètres du joueurs
 
-struct Joueur joueur = {200, 200, 1, 1, 3};
+struct Joueur joueur = {200, 200, 1, 1, 3, {0, 0, 0, -1, MISSILE_AMI, 1, 1}};
 
 uint8_t LED = 1;
 
 uint32_t LCD_COLOR_BACKGROUND = LCD_COLOR_BLACK;
 
 // Number of waves of enemies before the game is won.
-
-// uint8_t waves_left = 10;
+uint8_t wave = 0;
 
 // Tableau des monstres (8 par ligne, sur 3 ligne)
-struct Monster Table_ennemie[8][3];
+struct Monster Table_ennemis[8][3];
 
 /* USER CODE END 0 */
 
@@ -268,7 +268,7 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of Queue_F */
-  osMessageQDef(Queue_F, 1, enum End_type);
+  osMessageQDef(Queue_F, 8, enum End_type);
   Queue_FHandle = osMessageCreate(osMessageQ(Queue_F), NULL);
 
   /* definition and creation of Queue_N */
@@ -304,8 +304,15 @@ int main(void)
   osThreadDef(Projectile, f_projectile, osPriorityNormal, 0, 1024);
   ProjectileHandle = osThreadCreate(osThread(Projectile), NULL);
 
+  /* definition and creation of HUD */
+  osThreadDef(HUD, f_HUD, osPriorityBelowNormal, 0, 1024);
+  HUDHandle = osThreadCreate(osThread(HUD), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   vQueueAddToRegistry(Queue_NHandle, "Queue Missile");
+  vQueueAddToRegistry(Queue_JHandle, "Queue Missile");
+  vQueueAddToRegistry(Queue_EHandle, "Queue Missile");
+  vQueueAddToRegistry(Queue_FHandle, "Queue Missile");
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -391,7 +398,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
@@ -401,7 +409,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC | RCC_PERIPHCLK_CLK48;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC|RCC_PERIPHCLK_CLK48;
   PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
   PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
   PeriphClkInitStruct.PLLSAI.PLLSAIQ = 2;
@@ -462,6 +470,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -511,6 +520,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
+
 }
 
 /**
@@ -541,6 +551,7 @@ static void MX_CRC_Init(void)
   /* USER CODE BEGIN CRC_Init 2 */
 
   /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -578,6 +589,7 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 2 */
 
   /* USER CODE END DAC_Init 2 */
+
 }
 
 /**
@@ -614,6 +626,7 @@ static void MX_DMA2D_Init(void)
   /* USER CODE BEGIN DMA2D_Init 2 */
 
   /* USER CODE END DMA2D_Init 2 */
+
 }
 
 /**
@@ -675,6 +688,7 @@ static void MX_LTDC_Init(void)
   /* USER CODE BEGIN LTDC_Init 2 */
 
   /* USER CODE END LTDC_Init 2 */
+
 }
 
 /**
@@ -700,6 +714,7 @@ static void MX_RNG_Init(void)
   /* USER CODE BEGIN RNG_Init 2 */
 
   /* USER CODE END RNG_Init 2 */
+
 }
 
 /**
@@ -746,6 +761,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+
 }
 
 /**
@@ -790,6 +806,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
@@ -855,6 +872,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+
 }
 
 /**
@@ -899,6 +917,7 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
+
 }
 
 /**
@@ -977,6 +996,7 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 2 */
   HAL_TIM_MspPostInit(&htim8);
+
 }
 
 /* FMC initialization function */
@@ -1018,7 +1038,7 @@ static void MX_FMC_Init(void)
 
   if (HAL_SDRAM_Init(&hsdram1, &SdramTiming) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler( );
   }
 
   /* USER CODE BEGIN FMC_Init 2 */
@@ -1049,7 +1069,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED14_Pin | LED15_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED14_Pin|LED15_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -1067,7 +1087,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LCD_DISP_GPIO_Port, LCD_DISP_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOH, LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOH, LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
+                          |LED2_Pin|LED18_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(EXT_RST_GPIO_Port, EXT_RST_Pin, GPIO_PIN_RESET);
@@ -1079,7 +1100,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ARDUINO_SCL_D15_Pin ARDUINO_SDA_D14_Pin */
-  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin | ARDUINO_SDA_D14_Pin;
+  GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin|ARDUINO_SDA_D14_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1088,7 +1109,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : ULPI_D7_Pin ULPI_D6_Pin ULPI_D5_Pin ULPI_D2_Pin
                            ULPI_D1_Pin ULPI_D4_Pin */
-  GPIO_InitStruct.Pin = ULPI_D7_Pin | ULPI_D6_Pin | ULPI_D5_Pin | ULPI_D2_Pin | ULPI_D1_Pin | ULPI_D4_Pin;
+  GPIO_InitStruct.Pin = ULPI_D7_Pin|ULPI_D6_Pin|ULPI_D5_Pin|ULPI_D2_Pin
+                          |ULPI_D1_Pin|ULPI_D4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1096,13 +1118,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP2_Pin BP1_Pin */
-  GPIO_InitStruct.Pin = BP2_Pin | BP1_Pin;
+  GPIO_InitStruct.Pin = BP2_Pin|BP1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED14_Pin LED15_Pin */
-  GPIO_InitStruct.Pin = LED14_Pin | LED15_Pin;
+  GPIO_InitStruct.Pin = LED14_Pin|LED15_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1129,14 +1151,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(Audio_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin LED16_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin | LED16_Pin;
+  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|LED16_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED3_Pin LCD_DISP_Pin */
-  GPIO_InitStruct.Pin = LED3_Pin | LCD_DISP_Pin;
+  GPIO_InitStruct.Pin = LED3_Pin|LCD_DISP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1162,7 +1184,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TP3_Pin NC2_Pin */
-  GPIO_InitStruct.Pin = TP3_Pin | NC2_Pin;
+  GPIO_InitStruct.Pin = TP3_Pin|NC2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
@@ -1177,7 +1199,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : LED13_Pin LED17_Pin LED11_Pin LED12_Pin
                            LED2_Pin LED18_Pin */
-  GPIO_InitStruct.Pin = LED13_Pin | LED17_Pin | LED11_Pin | LED12_Pin | LED2_Pin | LED18_Pin;
+  GPIO_InitStruct.Pin = LED13_Pin|LED17_Pin|LED11_Pin|LED12_Pin
+                          |LED2_Pin|LED18_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1206,7 +1229,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LCD_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC7 PC6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_6;
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1222,7 +1245,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(ULPI_NXT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BP_JOYSTICK_Pin RMII_RXER_Pin */
-  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin | RMII_RXER_Pin;
+  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin|RMII_RXER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -1236,7 +1259,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_STP_Pin ULPI_DIR_Pin */
-  GPIO_InitStruct.Pin = ULPI_STP_Pin | ULPI_DIR_Pin;
+  GPIO_InitStruct.Pin = ULPI_STP_Pin|ULPI_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1251,7 +1274,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(EXT_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LCD_SCL_Pin LCD_SDA_Pin */
-  GPIO_InitStruct.Pin = LCD_SCL_Pin | LCD_SDA_Pin;
+  GPIO_InitStruct.Pin = LCD_SCL_Pin|LCD_SDA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1259,7 +1282,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
-  GPIO_InitStruct.Pin = ULPI_CLK_Pin | ULPI_D0_Pin;
+  GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1267,12 +1290,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB14 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14 | GPIO_PIN_15;
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -1281,38 +1305,36 @@ const uint32_t Couleur_joueur = LCD_COLOR_CYAN;
 const uint32_t Couleur_monstre = LCD_COLOR_RED;
 const uint32_t Couleur_missile = LCD_COLOR_WHITE;
 const uint32_t Couleur_vide = LCD_COLOR_BLACK;
-
+//const ip_addr_t IP_REGULUS = (45 << (3 * 8)) + (66 << (2 * 8)) + (110 << (1 * 8)) + (180 << (0 * 8));
+/* 
 static int envoie_score(int score)
 {
-  //socket socket_udp = udp_new();
+  struct udp_pcb socket;
+  &socket = new_udp();
+
   return 0;
 }
-
+ */
 void repopulate_ennemie_list(uint8_t wave)
 {
   int idx1;
   int idx2;
-  uint32_t nombre_aleatoire;
-  if (HAL_RNG_GenerateRandomNumber(&hrng, &nombre_aleatoire) != HAL_OK)
-  {
-    nombre_aleatoire = 0xFFFFFFFF;
-  }
   for (idx1 = 0; idx1 < 8; idx1++)
   {
     for (idx2 = 0; idx2 < 3; idx2++)
     {
-      Table_ennemie[idx1][idx2].x = (2 * idx1 + 1) * monstre_width;
-      Table_ennemie[idx1][idx2].y = (2 * idx2 + 1) * monstre_height;
-      Table_ennemie[idx1][idx2].health = wave / 2 + 1;
-      Table_ennemie[idx1][idx2].missile.x = 0;
-      Table_ennemie[idx1][idx2].missile.y = 0;
-      Table_ennemie[idx1][idx2].missile.dx = 1;
-      Table_ennemie[idx1][idx2].missile.dy = 0;
-      Table_ennemie[idx1][idx2].missile.equipe = 0;
-      Table_ennemie[idx1][idx2].missile.damage = 1;
-      Table_ennemie[idx1][idx2].missile.valide = 1;
-      if ((nombre_aleatoire >> (idx2 * 8 + idx1)) & 1)
-        Table_ennemie[idx1][idx2].health = 0;
+      Table_ennemis[idx1][idx2].x = (2 * idx1 + 2) * monstre_width;
+      Table_ennemis[idx1][idx2].y = (2 * idx2 + 1) * monstre_height;
+      Table_ennemis[idx1][idx2].health = 1; // wave / 2 + 1;
+      Table_ennemis[idx1][idx2].missile.x = 0;
+      Table_ennemis[idx1][idx2].missile.y = 0;
+      Table_ennemis[idx1][idx2].missile.dx = 1;
+      Table_ennemis[idx1][idx2].missile.dy = 0;
+      Table_ennemis[idx1][idx2].missile.equipe = 0;
+      Table_ennemis[idx1][idx2].missile.damage = 1; // wave / 2 + 1;
+      Table_ennemis[idx1][idx2].missile.valide = 1;
+      if (proba_bernoulli(1, 3))
+        Table_ennemis[idx1][idx2].health = 0;
     }
   }
 }
@@ -1331,6 +1353,52 @@ void lcd_plot_rect(uint16_t pos_x, uint16_t pos_y, uint16_t taille_x, uint16_t t
   xSemaphoreGive(MutexLCDHandle);
 }
 
+void lcd_plot_circ(uint16_t pos_x, uint16_t pos_y, uint16_t rad, uint32_t color)
+{
+  while (xSemaphoreTake(MutexLCDHandle, (TickType_t)10) != pdPASS)
+    ;
+  BSP_LCD_SetTextColor(color);
+  if (rad == 0)
+    rad = 1;
+  BSP_LCD_FillCircle(pos_x, pos_y, rad);
+  xSemaphoreGive(MutexLCDHandle);
+}
+
+void lcd_plot_text_pos(uint16_t pos_x, uint16_t pos_y, uint8_t *text, uint32_t color, Text_AlignModeTypdef mode)
+{
+  while (xSemaphoreTake(MutexLCDHandle, (TickType_t)10) != pdPASS)
+    ;
+  BSP_LCD_SetTextColor(color);
+  BSP_LCD_SetBackColor(Couleur_vide);
+  BSP_LCD_DisplayStringAt(pos_x, pos_y, text, mode);
+  xSemaphoreGive(MutexLCDHandle);
+}
+
+void lcd_plot_text_line(uint16_t line, uint8_t *text, uint32_t color)
+{
+  while (xSemaphoreTake(MutexLCDHandle, (TickType_t)10) != pdPASS)
+    ;
+  BSP_LCD_SetTextColor(color);
+  BSP_LCD_SetBackColor(Couleur_vide);
+  BSP_LCD_DisplayStringAtLine(line, text);
+  xSemaphoreGive(MutexLCDHandle);
+}
+
+uint8_t proba_bernoulli(uint32_t numerateur, uint32_t denominateur)
+{
+  uint32_t nombre_aleatoire;
+  while (HAL_RNG_GenerateRandomNumber(&hrng, &nombre_aleatoire) != HAL_OK)
+    ;
+  uint32_t limite;
+  limite = UINT32_MAX;
+  limite /= denominateur;
+  limite *= numerateur;
+  if (nombre_aleatoire > limite)
+    return 0;
+  else
+    return 1;
+}
+
 uint8_t colision_missile(uint16_t m_pos_x, uint16_t m_pos_y, uint16_t o_pos_x, uint16_t o_pos_y, uint16_t o_taille_x, uint16_t o_taille_y)
 {
   return ((m_pos_x > o_pos_x) & (m_pos_x < o_pos_x + o_taille_x) & (m_pos_y > o_pos_y) & (m_pos_y < o_pos_y + o_taille_y));
@@ -1344,7 +1412,7 @@ uint8_t colision_missile(uint16_t m_pos_x, uint16_t m_pos_y, uint16_t o_pos_x, u
   * @retval None
   */
 /* USER CODE END Header_f_GameMaster */
-void f_GameMaster(void const *argument)
+void f_GameMaster(void const * argument)
 {
   /* init code for LWIP */
   MX_LWIP_Init();
@@ -1352,7 +1420,6 @@ void f_GameMaster(void const *argument)
   TickType_t xLastWakeTime;
   xLastWakeTime = xTaskGetTickCount();
   const TickType_t xPeriodeTache = 100 / portTICK_PERIOD_MS;
-  uint8_t wave = 0;
   repopulate_ennemie_list(wave);
   enum End_type end;
   /* Infinite loop */
@@ -1366,6 +1433,8 @@ void f_GameMaster(void const *argument)
       vTaskDelete(Block_EnemieHandle);
       vTaskDelete(ProjectileHandle);
       vTaskDelete(Joueur_1Handle);
+      uint8_t msg[] = "GAME OVER";
+      lcd_plot_text_pos(BSP_LCD_GetXSize() / 2, BSP_LCD_GetYSize() / 2, msg, Couleur_joueur, CENTER_MODE);
       //TODO L'affichage de l'écran de fin et des scores
     }
 
@@ -1386,7 +1455,7 @@ void f_GameMaster(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_Joueur_1 */
-void f_Joueur_1(void const *argument)
+void f_Joueur_1(void const * argument)
 {
   /* USER CODE BEGIN f_Joueur_1 */
   TickType_t xLastWakeTime;
@@ -1415,6 +1484,7 @@ void f_Joueur_1(void const *argument)
   HAL_ADC_ConfigChannel(&hadc1, &sConfig1);
   HAL_ADC_Start(&hadc1);
 
+  enum End_type end = END_MORT_JOUEUR;
   // Paramètre de l'écran pour la reprouductibilité
 
   uint32_t LCD_HEIGHT = BSP_LCD_GetXSize();
@@ -1454,13 +1524,15 @@ void f_Joueur_1(void const *argument)
     if (xQueueReceive(Queue_JHandle, &missile, 0) == pdPASS)
       joueur.health = joueur.health - missile.damage;
     // On envoie 1 si le joueur est mort et on envoie 0 si les enemis sont tous morts
-    if (joueur.health == 0)
-      xQueueSend(Queue_FHandle, END_MORT_JOUEUR, 0);
+    if (joueur.health <= 0)
+      xQueueSend(Queue_FHandle, &end, 0);
 
     if ((!HAL_GPIO_ReadPin(BP1_GPIO_Port, BP1_Pin)) && bouton_relache)
     {
       bouton_relache = 0;
-      struct Missile missile = {joueur.x, joueur.y, joueur.missile.dx, joueur.missile.dy, 1, joueur.missile.color, joueur.missile.damage};
+      missile = joueur.missile;
+      missile.x = joueur.x + joueur_width / 2;
+      missile.y = joueur.y;
       xQueueSend(Queue_NHandle, &missile, 0);
       HAL_GPIO_TogglePin(LED11_GPIO_Port, LED11_Pin);
     }
@@ -1480,7 +1552,7 @@ void f_Joueur_1(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_block_enemie */
-void f_block_enemie(void const *argument)
+void f_block_enemie(void const * argument)
 {
   /* USER CODE BEGIN f_block_enemie */
   enum Sens_ennemie
@@ -1497,7 +1569,7 @@ void f_block_enemie(void const *argument)
   int8_t vitesse = 5;
   enum Sens_ennemie direction = DROITE;
 
-  struct Missile missile = {0, 0, 0, 0, 0, 0, 0, 0};
+  struct Missile missile = {0, 0, 0, 1, MISSILE_ENNEMI, 1, 1};
   int32_t lim_droite;
   int32_t lim_gauche;
   /* Infinite loop */
@@ -1505,26 +1577,26 @@ void f_block_enemie(void const *argument)
   {
     while (xQueueReceive(Queue_EHandle, &collision, 0) == pdPASS)
     {
-      Table_ennemie[collision.idx1][collision.idx2].health -= collision.damage;
+      Table_ennemis[collision.idx1][collision.idx2].health -= collision.damage;
     }
 
     for (int idx1 = 0; idx1 < 8; idx1++)
     {
       for (int idx2 = 0; idx2 < 3; idx2++)
       {
-        lcd_plot_rect(Table_ennemie[idx1][idx2].x, Table_ennemie[idx1][idx2].y, monstre_width, monstre_height, Couleur_vide);
+        lcd_plot_rect(Table_ennemis[idx1][idx2].x, Table_ennemis[idx1][idx2].y, monstre_width, monstre_height, Couleur_vide);
       }
     }
-    lim_droite = Table_ennemie[0][0].x;
-    lim_gauche = Table_ennemie[0][0].x;
+    lim_droite = Table_ennemis[0][0].x;
+    lim_gauche = Table_ennemis[0][0].x;
     for (int idx1 = 0; idx1 < 8; idx1++)
     {
       for (int idx2 = 0; idx2 < 3; idx2++)
       {
-        if ((Table_ennemie[idx1][idx2].x > lim_droite) && (Table_ennemie[idx1][idx2].health > 0))
-          lim_droite = Table_ennemie[idx1][idx2].x;
-        if ((Table_ennemie[idx1][idx2].x < lim_gauche) && (Table_ennemie[idx1][idx2].health > 0))
-          lim_gauche = Table_ennemie[idx1][idx2].x;
+        if ((Table_ennemis[idx1][idx2].x > lim_droite) && (Table_ennemis[idx1][idx2].health > 0))
+          lim_droite = Table_ennemis[idx1][idx2].x;
+        if ((Table_ennemis[idx1][idx2].x < lim_gauche) && (Table_ennemis[idx1][idx2].health > 0))
+          lim_gauche = Table_ennemis[idx1][idx2].x;
       }
     }
 
@@ -1539,9 +1611,9 @@ void f_block_enemie(void const *argument)
       for (int idx2 = 0; idx2 < 3; idx2++)
       {
         if (direction == DROITE)
-          Table_ennemie[idx1][idx2].x += vitesse;
+          Table_ennemis[idx1][idx2].x += vitesse;
         if (direction == GAUCHE)
-          Table_ennemie[idx1][idx2].x -= vitesse;
+          Table_ennemis[idx1][idx2].x -= vitesse;
       }
     }
     // TODO déplacement des ennemies
@@ -1551,47 +1623,34 @@ void f_block_enemie(void const *argument)
     {
       for (int idx2 = 0; idx2 < 3; idx2++)
       {
-        if (Table_ennemie[idx1][idx2].health > 0)
+        if (Table_ennemis[idx1][idx2].health > 0)
         {
           nombre_monstre++;
-          lcd_plot_rect(Table_ennemie[idx1][idx2].x, Table_ennemie[idx1][idx2].y, monstre_width, monstre_height, Couleur_monstre);
+          lcd_plot_rect(Table_ennemis[idx1][idx2].x, Table_ennemis[idx1][idx2].y, monstre_width, monstre_height, Couleur_monstre);
         }
       }
     }
     if (!nombre_monstre)
-      xQueueSend(Queue_FHandle, END_TABLEAU_VIDE, 0);
-
-    /*
-    xQueueReceive(Queue_EHandle, &collision, 0);
-    if (number_monsters == 0)
     {
+      enum End_type end = END_TABLEAU_VIDE;
       xQueueSend(Queue_FHandle, &end, 0);
     }
 
-    for (int i = 0; i < number_monsters; i++)
+    for (int idx1 = 0; idx1 < 8; idx1++)
     {
-      if (list_monsters[i].health > 0)
+      for (int idx2 = 0; idx2 < 3; idx2++)
       {
-        if ((missile.x == list_monsters[i].x) && (missile.y == list_monsters[i].y))
+        if (Table_ennemis[idx1][idx2].health > 0)
         {
-          list_monsters[i].health = list_monsters[i].health - 1;
-          // Est ce que cette ligne va marcher sachant que je transmets l'adresse dans la queue ?
-          missile.valide = 0;
-          if (list_monsters[i].health == 0)
+          if (proba_bernoulli(1, 32))
           {
-            //TODO explosion du plaisir ?
-            number_monsters = number_monsters - 1;
+            missile.x = Table_ennemis[idx1][idx2].x + monstre_width / 2;
+            missile.y = Table_ennemis[idx1][idx2].y + monstre_height;
+            xQueueSend(Queue_NHandle, &missile, 0);
           }
         }
-
-        BSP_LCD_DrawBitmap(list_monsters[i].x, list_monsters[i].y, &list_monsters[i].pbmp);
-        // On alterne le deplacement des méchants comme dans le vrai jeux
-        //TODO est ce que ca va posé un décalage entre l'affichage et la hitboxe ?
-        list_monsters[i].x = list_monsters[i].x + deplacement * 2;
       }
     }
-    deplacement = -1;
-    */
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
   /* USER CODE END f_block_enemie */
@@ -1604,47 +1663,62 @@ void f_block_enemie(void const *argument)
 * @retval None
 */
 /* USER CODE END Header_f_projectile */
-void f_projectile(void const *argument)
+void f_projectile(void const * argument)
 {
   /* USER CODE BEGIN f_projectile */
   TickType_t xLastWakeTime;
   xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xPeriodeTache = 200 / portTICK_PERIOD_MS; // Toutes les 200 ms
-  const int TAILLE_LISTE_MISSILE = 25;
+  const TickType_t xPeriodeTache = 10 / portTICK_PERIOD_MS; // Toutes les 200 ms
+  const int TAILLE_LISTE_MISSILE = 100;
   /* Infinite loop */
   struct Missile liste_missile[TAILLE_LISTE_MISSILE];
-  struct Missile missile = {70, 70, 1, 0, 0, LCD_COLOR_WHITE, 1, 1};
-  uint8_t indice = 1;
+  struct Missile missile = {70, 70, 0, 3, MISSILE_ENNEMI, 1, 0};
   liste_missile[0] = missile;
   uint32_t new_x;
   uint32_t new_y;
   // Paramètre de l'écran pour la reprouductibilité
 
-  uint32_t LCD_HEIGHT = BSP_LCD_GetXSize();
-  uint32_t LCD_WIDTH = BSP_LCD_GetYSize();
+  uint32_t LCD_HEIGHT = BSP_LCD_GetYSize();
+  uint32_t LCD_WIDTH = BSP_LCD_GetXSize();
 
+  for (int idx_missile = 0; idx_missile < TAILLE_LISTE_MISSILE; idx_missile++)
+    liste_missile[idx_missile] = missile;
   for (;;)
   {
+    while (xQueueReceive(Queue_NHandle, &missile, 0) == pdPASS)
+    {
+      for (int idx_missile = 0; idx_missile < TAILLE_LISTE_MISSILE; idx_missile++)
+      {
+        if (liste_missile[idx_missile].valide == 0)
+        {
+          liste_missile[idx_missile] = missile;
+          break;
+        }
+      }
+    }
+
     for (int idx_missile = 0; idx_missile < TAILLE_LISTE_MISSILE; idx_missile++)
     {
       if (liste_missile[idx_missile].valide)
       {
+        lcd_plot_circ(liste_missile[idx_missile].x, liste_missile[idx_missile].y, liste_missile[idx_missile].damage, Couleur_vide);
+
         new_x = liste_missile[idx_missile].x + liste_missile[idx_missile].dx;
         new_y = liste_missile[idx_missile].y + liste_missile[idx_missile].dy;
-        if ((new_x < 0) | (new_x > LCD_WIDTH) | (new_y < 0) | (new_y > LCD_HEIGHT))
+        if ((new_x <= 0) | (new_x >= LCD_WIDTH) | (new_y <= 0) | (new_y >= LCD_HEIGHT)) //Missile hors de l'écran
           liste_missile[idx_missile].valide = 0;
-        if ((liste_missile[idx_missile].equipe == MISSILE_ENEMIE) & colision_missile(new_x, new_y, joueur.x, joueur.y, joueur_width, joueur_height))
+        if ((liste_missile[idx_missile].equipe == MISSILE_ENNEMI) & colision_missile(new_x, new_y, joueur.x, joueur.y, joueur_width, joueur_height))
         { //TODO condition de choc avec le joueur
           xQueueSend(Queue_JHandle, &liste_missile[idx_missile], 0);
           liste_missile[idx_missile].valide = 0;
         }
-        if (liste_missile[idx_missile].equipe == 1)
+        if (liste_missile[idx_missile].equipe == MISSILE_AMI)
         {
           for (int idx_mechant_1 = 0; idx_mechant_1 < 8; idx_mechant_1++)
           {
             for (int idx_mechant_2 = 0; idx_mechant_2 < 3; idx_mechant_2++)
             {
-              if (colision_missile(new_x, new_y, Table_ennemie[idx_mechant_1][idx_mechant_2].x, Table_ennemie[idx_mechant_1][idx_mechant_2].y, monstre_width, monstre_height))
+              if ((colision_missile(new_x, new_y, Table_ennemis[idx_mechant_1][idx_mechant_2].x, Table_ennemis[idx_mechant_1][idx_mechant_2].y, monstre_width, monstre_height)) && (Table_ennemis[idx_mechant_1][idx_mechant_2].health > 0))
               {
                 struct Collision collision = {idx_mechant_1, idx_mechant_2, liste_missile[idx_missile].damage};
                 xQueueSend(Queue_EHandle, (void *)&collision, 0);
@@ -1653,88 +1727,48 @@ void f_projectile(void const *argument)
             }
           }
         }
+
+        liste_missile[idx_missile].x = new_x;
+        liste_missile[idx_missile].y = new_y;
+
+        if (liste_missile[idx_missile].valide)
+          lcd_plot_circ(liste_missile[idx_missile].x, liste_missile[idx_missile].y, liste_missile[idx_missile].damage, Couleur_missile);
         //TODO effacage
         //TODO nouvelle position
       }
     }
-
-    /*
-	  //xQueueReceive(Queue_NHandle, &missile, 0);
-	  //liste_missile[indice++] = missile;
-
-	  if (xQueueReceive(Queue_NHandle, &missile, 0) == pdPASS)
-	  {
-		  liste_missile[indice++] = missile;
-	  }
-
-	  for (int i=0;i< indice;i++)
-	  {
-
-		  // Si le missile n'est pas sur un bord
-		  if (liste_missile[i].valide == 1)
-		  {
-			  // Si le missile appartient au joueur :
-			  if (liste_missile[i].equipe == 1)
-			  {
-				  if (liste_missile[i].x >= Limit_ennemis_x)
-				  {
-					  xQueueSend(Queue_EHandle, &liste_missile+indice,0);
-					  // TODO Une petite animation d'explosion ?
-				  }
-
-				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
-					{
-					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
-					  taskENTER_CRITICAL();
-					  BSP_LCD_SetTextColor(LCD_COLOR_BACKGROUND);
-					  BSP_LCD_FillRect(joueur.x, joueur.y, 20, 20);
-					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
-					  liste_missile[i].y = liste_missile[i].y + liste_missile[i].dy;
-					  //BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
-					  BSP_LCD_SetTextColor(liste_missile[i].color);
-					  BSP_LCD_FillRect(liste_missile[i].x, liste_missile[i].y, 20, 20);
-					  taskEXIT_CRITICAL();
-					}
-				  //TODO test sur tous les ennemis
-				  else
-				  {
-					  liste_missile[i].valide = 0;
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
-				  }
-			  }
-			  // Si le missile appartient aux ennemis
-			  else if (liste_missile[i].equipe == 0)
-			  {
-				  if ((liste_missile[i].x == joueur.x)&&(liste_missile[i].y == joueur.y))
-				  {
-					  xQueueSend(Queue_JHandle, &liste_missile+indice,0);
-					  liste_missile[i].valide = 0;
-					  // TODO Une petite animation d'explosion ?
-				  }
-				  if ((liste_missile[i].x > 1)&&(liste_missile[i].x < LCD_HEIGHT-1)&&(liste_missile[i].y < LCD_WIDTH-1)&&(liste_missile[i].y > 1))
-				  {
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
-					  liste_missile[i].x = liste_missile[i].x + liste_missile[i].dx ;
-					  liste_missile[i].y = liste_missile[i].y + liste_missile[i].dy;
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, liste_missile[i].color);
-				  }
-				  else
-				  {
-					  liste_missile[i].valide = 0;
-					  BSP_LCD_DrawPixel(liste_missile[i].x, liste_missile[i].y, LCD_COLOR_BACKGROUND);
-				  }
-			  }
-
-		  }
-	  }
-	  */
     vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
   }
 
   /* USER CODE END f_projectile */
 }
 
+/* USER CODE BEGIN Header_f_HUD */
 /**
+* @brief Function implementing the HUD thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_f_HUD */
+void f_HUD(void const * argument)
+{
+  /* USER CODE BEGIN f_HUD */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xPeriodeTache = 100 / portTICK_PERIOD_MS; // Toutes les 200 ms
+  uint8_t line_hud[50] = "";
+  const uint8_t base[50] = "vie : %2u  -  vague : %2u";
+  /* Infinite loop */
+  for (;;)
+  {
+    sprintf(line_hud, base, (uint)joueur.health, (uint)wave);
+    lcd_plot_text_line(0, line_hud, Couleur_missile);
+    vTaskDelayUntil(&xLastWakeTime, xPeriodeTache);
+  }
+  /* USER CODE END f_HUD */
+}
+
+ /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -1747,8 +1781,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6)
-  {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1771,7 +1804,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
