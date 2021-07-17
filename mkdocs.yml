@@ -1,0 +1,29 @@
+site_name: Space Invader's
+site_url: https://example.com/
+theme: material
+
+nav :
+  - 'Home' : 'index.md'
+  - 'Tutoriel' : 'tuto.md'
+  - 'Architecture du code' : 'archi.md'
+  - 'Thread' : 'thread.md'
+  - 'Classe' : 'class.md'
+  - 'Perriphériques' :
+    - 'Ecran' : 'lcd.md'
+    - 'Aléatoire' : 'rng.md'
+    - 'Leds' : 'led.md'
+    - 'Joystick' : 'joystick.md'
+
+markdown_extensions:
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+
+extra_javascript:
+  - javascripts/config.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - extra.css
